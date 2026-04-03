@@ -12,7 +12,7 @@ python3 scripts/generate_easyeda_adapter_pcb.py --all-variants
 
 Import `docs/easyeda-adapter-44pin-dev2bread.*.standard.json` in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab.
 
-Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**.
+Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**. For **AI / handoff context** (terminology, silk modes, pitfalls, repo split): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)**.
 
 **`docs/`** also holds reference photos: commercial adapter example, DevKit module, **breadboard misfitment** (`esp32-s3-squeeze.jpeg`), and optional **silk artwork** sources if you add bitmap branding in EasyEDA.
 
