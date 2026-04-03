@@ -1,0 +1,892 @@
+#!/usr/bin/env python3
+"""
+Generate EasyEDA Standard PCB JSON for a 44-pin dev-board → breadboard adapter.
+
+Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
+`docs/example-44pin-beradboard adapter.jpg`):
+  * **Wide head (ESP32):** Two rows of 22 pins, 0.1" pitch, rows parallel to **+X**, ~1.1"
+    between rows along **+Y**.
+  * **Stem (breadboard end):** The narrow **T-stem** — same idea as a mushroom/wine-glass stem or
+    (informally) a guitar **neck**. Rotated **90°** in the PCB vs the head; 22-pin direction **+Y**,
+    straddle along **+X** (~0.5"). Placed **below** the head, centered (T shape).
+  * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
+    column (breadboard-style depth), all **shorted on the same net** — solder headers in **one**
+    row only to match different dev-board widths.
+  * **Routing:** Short vertical links between the four wide pads per net, then one Manhattan path
+    from the **innermost** wide pad to the stem pad, with a jog so routes in the gap avoid the other
+    column’s pads at the same X.
+  * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
+    **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
+    `docs/data/devkitc1_gpio_silk_paths.json`) or generic **1–44** (`--silk-labels numeric`,
+    `docs/data/numeric_silk_paths.json`). Re-bake paths with `scripts/bake_devkitc_gpio_silk_paths.py`.
+
+Two formats exist:
+  * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
+    `~`-delimited strings. This is what EasyEDA Standard saves and what **EasyEDA Pro**
+    imports via **File → Import → Import EasyEDA Standard Edition**.
+  * **Expanded JSON** (TRACK/PAD objects): only useful for old Standard **applySource** API;
+    EasyEDA Pro **File → File Source → Apply** expects Pro `.epcb` JSON Lines → "Invalid format".
+
+See: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/
+Storage units: file coordinates / stroke widths use **0.1 mil** steps (value 1 = 10 mil) per EasyEDA docs.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from argparse import Namespace
+from collections.abc import Callable
+from pathlib import Path
+
+# --- Mechanical (mil) ---
+PITCH = 100  # 0.1" (2.54 mm)
+# Breadboard side: 12.7 mm = 0.5" between rows (common on reference adapters; 300 mil = 0.3" if you prefer)
+NARROW_ROW_GAP = 500
+WIDE_ROW_GAP = 1100  # ~27.9 mm / 1.1" ESP32-S3-DevKitC-1 class boards
+NECK_GAP = 500  # gap below wide rows before the stem pad block starts (along +Y)
+NUM_PINS_PER_ROW = 22
+# Per column on the wide head: holes stepping toward the center gap (0.1" pitch), same as one
+# dimension of a breadboard tie strip — pick **one** row to solder; all four pads are one net.
+WIDE_HEAD_DEPTH_HOLES = 4
+
+# Layout (mil): +Y downward.
+X0 = 400
+# Wide head (ESP32): rows parallel to +X
+Y_W_ROW_A = 280  # nets 1–22
+Y_W_ROW_B = Y_W_ROW_A + WIDE_ROW_GAP  # nets 23–44
+# Narrow stem: pads at stem_layout_mil() — rows parallel to +Y, straddle along +X
+
+PAD_SIZE = 55
+HOLE_R = 20
+TRACK_WIDTH = 24
+OUTLINE_STROKE = 5
+
+MARGIN = 150
+HEAD_OUTLINE_EXTRA = 160
+STEM_OUTLINE_MARGIN = 130  # outline around narrow columns (beyond pad centers)
+# Jog (mil) before long vertical leg so wide-row-A routes miss wide-row-B pads (same column).
+ROUTE_JOG_MIL = 40
+
+
+def mil_to_u(m: float) -> float:
+    """EasyEDA PCB file uses 0.1 mil granularity (doc: stroke 1 = 10 mil)."""
+    return m / 10.0
+
+
+def stem_layout_mil() -> tuple[float, float, float, float]:
+    """Center of head, left/right narrow column centers (straddle), top Y of stem pad i=0."""
+    xc = X0 + (NUM_PINS_PER_ROW - 1) * PITCH / 2.0
+    x_ln = xc - NARROW_ROW_GAP / 2.0
+    x_rn = xc + NARROW_ROW_GAP / 2.0
+    y_stem_top = Y_W_ROW_B + NECK_GAP
+    return xc, x_ln, x_rn, y_stem_top
+
+
+def stem_pin_y_mil(i: int) -> float:
+    """Y center for stem pin index i (0..21), narrow columns (nets 1–22 / 23–44)."""
+    _, _, _, y0 = stem_layout_mil()
+    return y0 + i * PITCH
+
+
+def wide_head_y_positions_mil(*, side_a: bool) -> list[float]:
+    """Y centers for the 4 breadboard-depth holes toward the trench (side A from Y_W_ROW_A down)."""
+    n = WIDE_HEAD_DEPTH_HOLES
+    if side_a:
+        return [Y_W_ROW_A + k * PITCH for k in range(n)]
+    return [Y_W_ROW_B - k * PITCH for k in range(n)]
+
+
+def _board_outline_polygon_mil(
+    *,
+    margin_mil: float = MARGIN,
+    head_outline_extra_mil: float = HEAD_OUTLINE_EXTRA,
+    stem_outline_margin_mil: float = STEM_OUTLINE_MARGIN,
+) -> list[tuple[float, float]]:
+    """T outline: wide head, narrow stem centered under head (reference adapter shape)."""
+    _, x_ln, x_rn, y_stem_top = stem_layout_mil()
+    x_left = X0 - margin_mil
+    x_right = X0 + (NUM_PINS_PER_ROW - 1) * PITCH + margin_mil
+    x_head_l = x_left - head_outline_extra_mil
+    x_head_r = x_right + head_outline_extra_mil
+    x_stem_l = x_ln - stem_outline_margin_mil
+    x_stem_r = x_rn + stem_outline_margin_mil
+    y_top = Y_W_ROW_A - margin_mil
+    y_bot = stem_pin_y_mil(NUM_PINS_PER_ROW - 1) + margin_mil
+    y_neck = y_stem_top - 50  # step inward just above stem
+    return [
+        (x_head_l, y_top),
+        (x_head_r, y_top),
+        (x_head_r, y_neck),
+        (x_stem_r, y_neck),
+        (x_stem_r, y_bot),
+        (x_stem_l, y_bot),
+        (x_stem_l, y_neck),
+        (x_head_l, y_neck),
+    ]
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
+    """Translate an EasyEDA-style M/L/Z path (centered at origin) by (dx, dy) in file units."""
+    parts = d.split()
+    out: list[str] = []
+    i = 0
+    while i < len(parts):
+        p = parts[i]
+        if p == "Z":
+            out.append("Z")
+            i += 1
+            continue
+        if p in ("M", "L"):
+            out.append(p)
+            x = float(parts[i + 1]) + dx
+            y = float(parts[i + 2]) + dy
+            out.append(f"{x:.2f}")
+            out.append(f"{y:.2f}")
+            i += 3
+            continue
+        raise ValueError(f"unexpected path token {p!r} in silk path")
+    return " ".join(out)
+
+
+def _append_labeled_silk(
+    shapes: list[str],
+    nid: Callable[[], str],
+    *,
+    paths_map: dict[str, str],
+    j1: list[str],
+    j3: list[str],
+) -> None:
+    """Top silk at wide head + stem using parallel label lists (length 22 each)."""
+    _, x_ln, x_rn, _ = stem_layout_mil()
+    off_head = 62.0  # mil from row toward board edge (outside pin block)
+    off_stem = 108.0  # mil outside stem columns
+    for i in range(NUM_PINS_PER_ROW):
+        lab = j1[i]
+        d0 = paths_map[lab]
+        cx = mil_to_u(X0 + i * PITCH)
+        cy = mil_to_u(Y_W_ROW_A - off_head)
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+    for i in range(NUM_PINS_PER_ROW):
+        lab = j3[i]
+        d0 = paths_map[lab]
+        cx = mil_to_u(X0 + i * PITCH)
+        cy = mil_to_u(Y_W_ROW_B + off_head)
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+    for i in range(NUM_PINS_PER_ROW):
+        lab = j1[i]
+        d0 = paths_map[lab]
+        cx = mil_to_u(x_ln - off_stem)
+        cy = mil_to_u(stem_pin_y_mil(i))
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+    for i in range(NUM_PINS_PER_ROW):
+        lab = j3[i]
+        d0 = paths_map[lab]
+        cx = mil_to_u(x_rn + off_stem)
+        cy = mil_to_u(stem_pin_y_mil(i))
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+
+
+def _numeric_silk_row_labels() -> tuple[list[str], list[str]]:
+    """J1 side = logical 1..22, J3 side = 23..44 (same net numbering as copper)."""
+    j1 = [str(i) for i in range(1, NUM_PINS_PER_ROW + 1)]
+    j3 = [str(i) for i in range(NUM_PINS_PER_ROW + 1, 2 * NUM_PINS_PER_ROW + 1)]
+    return j1, j3
+
+
+def _silk_pin1_circles_mil() -> list[tuple[float, float, float]]:
+    """Small open circles on Top Silk marking pin 1 (wide row A, stem). (cx, cy, r) in mil."""
+    _, x_ln, _, y_stem_top = stem_layout_mil()
+    ys_a = wide_head_y_positions_mil(side_a=True)
+    x_pad = X0
+    y_pad = ys_a[0]
+    offset = 48.0
+    r = 22.0
+    # Northwest of pad centers — visible, avoids overlapping pads at usual fab rules
+    return [
+        (x_pad - offset, y_pad - offset, r),
+        (x_ln - offset, y_stem_top - offset, r),
+    ]
+
+
+def build_standard_compressed(
+    *,
+    margin_mil: float | None = None,
+    stem_outline_margin_mil: float | None = None,
+    head_outline_extra_mil: float | None = None,
+    silk_pin1: bool = True,
+    silk_labels: str = "devkitc1",
+) -> dict:
+    """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings)."""
+    if silk_labels not in ("none", "devkitc1", "numeric"):
+        raise ValueError(f"invalid silk_labels: {silk_labels!r}")
+
+    margin = margin_mil if margin_mil is not None else MARGIN
+    stem_om = stem_outline_margin_mil if stem_outline_margin_mil is not None else STEM_OUTLINE_MARGIN
+    head_ex = head_outline_extra_mil if head_outline_extra_mil is not None else HEAD_OUTLINE_EXTRA
+
+    gid = 0
+
+    def nid() -> str:
+        nonlocal gid
+        gid += 1
+        return f"gge{gid}"
+
+    shapes: list[str] = []
+
+    poly_mil = _board_outline_polygon_mil(
+        margin_mil=margin,
+        head_outline_extra_mil=head_ex,
+        stem_outline_margin_mil=stem_om,
+    )
+    ow = mil_to_u(OUTLINE_STROKE) or 0.5
+    for i in range(len(poly_mil)):
+        x1, y1 = poly_mil[i]
+        x2, y2 = poly_mil[(i + 1) % len(poly_mil)]
+        shapes.append(
+            f"TRACK~{ow}~10~~{mil_to_u(x1)} {mil_to_u(y1)} {mil_to_u(x2)} {mil_to_u(y2)}~{nid()}~0"
+        )
+
+    tw = mil_to_u(TRACK_WIDTH)
+    if tw < 1:
+        tw = 2.0
+
+    pw = mil_to_u(PAD_SIZE)
+    hr = mil_to_u(HOLE_R)
+    j = mil_to_u(ROUTE_JOG_MIL)
+    _, x_ln, x_rn, _ = stem_layout_mil()
+
+    x_ln_u = mil_to_u(x_ln)
+    x_rn_u = mil_to_u(x_rn)
+
+    # Wide side A (nets 1–22): 4 pads per column → stem left column
+    for i in range(NUM_PINS_PER_ROW):
+        net = f"NET{i + 1}"
+        x = mil_to_u(X0 + i * PITCH)
+        xj = x - j
+        y_s = mil_to_u(stem_pin_y_mil(i))
+        num = str(i + 1)
+        ys_mil = wide_head_y_positions_mil(side_a=True)
+        for yk in ys_mil:
+            shapes.append(
+                f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
+            )
+        shapes.append(
+            f"PAD~ELLIPSE~{x_ln_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
+        )
+        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+            ya_u = mil_to_u(ys_mil[k])
+            yb_u = mil_to_u(ys_mil[k + 1])
+            shapes.append(
+                f"TRACK~{tw}~1~{net}~{x} {ya_u} {x} {yb_u}~{nid()}~0"
+            )
+        y_inner = mil_to_u(ys_mil[-1])
+        shapes.append(
+            f"TRACK~{tw}~1~{net}~{x} {y_inner} {xj} {y_inner} {xj} {y_s} {x_ln_u} {y_s}~{nid()}~0"
+        )
+
+    # Wide side B (nets 23–44): 4 pads per column → stem right column
+    for i in range(NUM_PINS_PER_ROW):
+        net = f"NET{i + 23}"
+        x = mil_to_u(X0 + i * PITCH)
+        xj = x + j
+        y_s = mil_to_u(stem_pin_y_mil(i))
+        num = str(i + 23)
+        ys_mil = wide_head_y_positions_mil(side_a=False)
+        for yk in ys_mil:
+            shapes.append(
+                f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
+            )
+        shapes.append(
+            f"PAD~ELLIPSE~{x_rn_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
+        )
+        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+            ya_u = mil_to_u(ys_mil[k])
+            yb_u = mil_to_u(ys_mil[k + 1])
+            shapes.append(
+                f"TRACK~{tw}~1~{net}~{x} {ya_u} {x} {yb_u}~{nid()}~0"
+            )
+        y_inner = mil_to_u(ys_mil[-1])
+        shapes.append(
+            f"TRACK~{tw}~1~{net}~{x} {y_inner} {xj} {y_inner} {xj} {y_s} {x_rn_u} {y_s}~{nid()}~0"
+        )
+
+    if silk_pin1:
+        sw = max(mil_to_u(5.0), 0.5)
+        for cx, cy, r in _silk_pin1_circles_mil():
+            shapes.append(
+                f"CIRCLE~{mil_to_u(cx)}~{mil_to_u(cy)}~{mil_to_u(r)}~{sw}~3~{nid()}"
+            )
+
+    if silk_labels == "devkitc1":
+        data_path = _repo_root() / "docs/data/devkitc1_gpio_silk_paths.json"
+        if not data_path.is_file():
+            print(
+                f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py "
+                "(needs matplotlib in a venv). Skipping silk text.",
+                file=sys.stderr,
+            )
+        else:
+            raw = json.loads(data_path.read_text(encoding="utf-8"))
+            paths_map: dict[str, str] = raw["paths"]
+            j1: list[str] = raw["j1_order"]
+            j3: list[str] = raw["j3_order"]
+            if len(j1) != NUM_PINS_PER_ROW or len(j3) != NUM_PINS_PER_ROW:
+                print("Warning: DevKitC silk JSON pin count mismatch; skipping.", file=sys.stderr)
+            else:
+                _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+    elif silk_labels == "numeric":
+        data_path = _repo_root() / "docs/data/numeric_silk_paths.json"
+        if not data_path.is_file():
+            print(
+                f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py. "
+                "Skipping silk text.",
+                file=sys.stderr,
+            )
+        else:
+            raw = json.loads(data_path.read_text(encoding="utf-8"))
+            paths_map = raw["paths"]
+            j1, j3 = _numeric_silk_row_labels()
+            _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+
+    xs = [p[0] for p in poly_mil]
+    ys = [p[1] for p in poly_mil]
+    xa, xb = mil_to_u(min(xs)), mil_to_u(max(xs))
+    ya, yd = mil_to_u(min(ys)), mil_to_u(max(ys))
+    bx, by, bw, bh = xa, ya, xb - xa, yd - ya
+
+    # Canvas / origin — place origin near lower-left of content (file units)
+    ox = (xa + xb) / 2
+    oy = (ya + yd) / 2
+    canvas = (
+        f"CA~2400~2400~#000000~yes~#FFFFFF~10~1200~1200~line~1~mil~1~45~visible~0.5~{ox}~{oy}~0~yes"
+    )
+
+    layers = [
+        "1~TopLayer~#FF0000~true~true~true~",
+        "2~BottomLayer~#0000FF~true~false~true~",
+        "3~TopSilkLayer~#FFCC00~true~false~true~",
+        "4~BottomSilkLayer~#66CC33~true~false~true~",
+        "5~TopPasteMaskLayer~#808080~true~false~true~",
+        "6~BottomPasteMaskLayer~#800000~true~false~true~",
+        "7~TopSolderMaskLayer~#800080~true~false~true~0.3",
+        "8~BottomSolderMaskLayer~#AA00FF~true~false~true~0.3",
+        "9~Ratlines~#6464FF~true~false~true~",
+        "10~BoardOutline~#FF00FF~true~false~true~",
+        "11~Multi-Layer~#C0C0C0~true~false~true~",
+        "12~Document~#FFFFFF~true~false~true~",
+    ]
+
+    objects = [
+        "All~true~false",
+        "Component~true~true",
+        "Prefix~true~true",
+        "Name~true~false",
+        "Track~true~true",
+        "Pad~true~true",
+        "Via~true~true",
+        "Hole~true~true",
+        "Copper_Area~true~true",
+        "Circle~true~true",
+        "Arc~true~true",
+        "Solid_Region~true~true",
+        "Text~true~true",
+        "Image~true~true",
+        "Rect~true~true",
+        "Dimension~true~true",
+        "Protractor~true~true",
+    ]
+
+    return {
+        "head": {
+            "docType": "3",
+            "editorVersion": "6.5.0",
+            "newgId": True,
+            "c_para": {},
+            "hasIdFlag": True,
+        },
+        "canvas": canvas,
+        "shape": shapes,
+        "layers": layers,
+        "objects": objects,
+        "BBox": {"x": bx, "y": by, "width": bw, "height": bh},
+        "preference": {"hideFootprints": "", "hideNets": ""},
+        "DRCRULE": {
+            "Default": {
+                "trackWidth": 1,
+                "clearance": 0.6,
+                "viaHoleDiameter": 2.4,
+                "viaHoleD": 1.2,
+            },
+            "isRealtime": False,
+            "isDrcOnRoutingOrPlaceVia": False,
+            "checkObjectToCopperarea": True,
+            "showDRCRangeLine": True,
+        },
+        "netColors": {},
+    }
+
+
+def build_legacy_expanded() -> dict:
+    """Legacy expanded object graph (Standard applySource); not for EasyEDA Pro File Source."""
+
+    gid = 0
+
+    def next_id() -> str:
+        nonlocal gid
+        gid += 1
+        return f"gge{gid}"
+
+    tracks: dict = {}
+    pads: dict = {}
+
+    signals: dict[str, list] = {f"NET{n}": [] for n in range(1, 45)}
+    signals[""] = []
+
+    poly_mil = _board_outline_polygon_mil()
+    xs = [p[0] for p in poly_mil]
+    ys = [p[1] for p in poly_mil]
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+    w = x_max - x_min
+    h = y_max - y_min
+
+    for i in range(len(poly_mil)):
+        xa, ya = poly_mil[i]
+        xb, yb = poly_mil[(i + 1) % len(poly_mil)]
+        oid = next_id()
+        tracks[oid] = {
+            "gId": oid,
+            "layerid": "10",
+            "net": "",
+            "pointArr": [{"x": xa, "y": ya}, {"x": xb, "y": yb}],
+            "strokeWidth": OUTLINE_STROKE,
+        }
+        signals[""].append(
+            {"gId": oid, "cmd": "TRACK", "layerid": 10, "fid": 0}
+        )
+
+    def add_signal(net: str, obj: dict, cmd: str) -> None:
+        signals[net].append(
+            {
+                "gId": obj["gId"],
+                "cmd": cmd,
+                "layerid": obj.get("layerid", "11"),
+                "fid": 0,
+            }
+        )
+
+    item_order: list[str] = list(tracks.keys())
+
+    _, x_ln, x_rn, _ = stem_layout_mil()
+
+    for i in range(NUM_PINS_PER_ROW):
+        net = f"NET{i + 1}"
+        x = X0 + i * PITCH
+        xj = x - ROUTE_JOG_MIL
+        ys_stem = stem_pin_y_mil(i)
+        ys_head = wide_head_y_positions_mil(side_a=True)
+        y_inner = ys_head[-1]
+        for yk in ys_head:
+            pid = next_id()
+            pads[pid] = pad_dict(pid, x, yk, str(i + 1), net)
+            add_signal(net, pads[pid], "PAD")
+            item_order.append(pid)
+        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+            lk = next_id()
+            tracks[lk] = {
+                "gId": lk,
+                "layerid": "1",
+                "net": net,
+                "pointArr": [
+                    {"x": x, "y": ys_head[k]},
+                    {"x": x, "y": ys_head[k + 1]},
+                ],
+                "strokeWidth": TRACK_WIDTH,
+            }
+            add_signal(net, tracks[lk], "TRACK")
+            item_order.append(lk)
+        pw = next_id()
+        pads[pw] = pad_dict(pw, x_ln, ys_stem, str(i + 1), net)
+        tr = next_id()
+        tracks[tr] = {
+            "gId": tr,
+            "layerid": "1",
+            "net": net,
+            "pointArr": [
+                {"x": x, "y": y_inner},
+                {"x": xj, "y": y_inner},
+                {"x": xj, "y": ys_stem},
+                {"x": x_ln, "y": ys_stem},
+            ],
+            "strokeWidth": TRACK_WIDTH,
+        }
+        add_signal(net, pads[pw], "PAD")
+        add_signal(net, tracks[tr], "TRACK")
+        item_order.extend([pw, tr])
+
+    for i in range(NUM_PINS_PER_ROW):
+        net = f"NET{i + 23}"
+        x = X0 + i * PITCH
+        xj = x + ROUTE_JOG_MIL
+        ys_stem = stem_pin_y_mil(i)
+        ys_head = wide_head_y_positions_mil(side_a=False)
+        y_inner = ys_head[-1]
+        for yk in ys_head:
+            pid = next_id()
+            pads[pid] = pad_dict(pid, x, yk, str(i + 23), net)
+            add_signal(net, pads[pid], "PAD")
+            item_order.append(pid)
+        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+            lk = next_id()
+            tracks[lk] = {
+                "gId": lk,
+                "layerid": "1",
+                "net": net,
+                "pointArr": [
+                    {"x": x, "y": ys_head[k]},
+                    {"x": x, "y": ys_head[k + 1]},
+                ],
+                "strokeWidth": TRACK_WIDTH,
+            }
+            add_signal(net, tracks[lk], "TRACK")
+            item_order.append(lk)
+        pw = next_id()
+        pads[pw] = pad_dict(pw, x_rn, ys_stem, str(i + 23), net)
+        tr = next_id()
+        tracks[tr] = {
+            "gId": tr,
+            "layerid": "1",
+            "net": net,
+            "pointArr": [
+                {"x": x, "y": y_inner},
+                {"x": xj, "y": y_inner},
+                {"x": xj, "y": ys_stem},
+                {"x": x_rn, "y": ys_stem},
+            ],
+            "strokeWidth": TRACK_WIDTH,
+        }
+        add_signal(net, pads[pw], "PAD")
+        add_signal(net, tracks[tr], "TRACK")
+        item_order.extend([pw, tr])
+
+    return {
+        "TRACK": tracks,
+        "PAD": pads,
+        "VIA": {},
+        "TEXT": {},
+        "DIMENSION": {},
+        "FOOTPRINT": {},
+        "ARC": {},
+        "RECT": {},
+        "CIRCLE": {},
+        "IMAGE": {},
+        "COPPERAREA": {},
+        "SOLIDREGION": {},
+        "DRCRULE": {
+            "trackWidth": 6,
+            "track2Track": 6,
+            "pad2Pad": 8,
+            "track2Pad": 8,
+            "hole2Hole": 10,
+            "holeSize": HOLE_R * 2,
+            "isRealtime": False,
+        },
+        "FABRICATION": {},
+        "SIGNALS": signals,
+        "head": {"c_para": None},
+        "systemColor": {
+            "background": "#000000",
+            "grid": "#FFFFFF",
+            "highLight": "#FFFFFF",
+            "hole": "#000000",
+            "DRCError": "#FFFFFF",
+        },
+        "preference": {"hideNets": [], "hideFootprints": [], "unit": "mil"},
+        "layers": _layers_expanded(),
+        "BBox": {
+            "x": int(x_min),
+            "y": int(y_min),
+            "width": int(w),
+            "height": int(h),
+        },
+        "canvas": {
+            "viewWidth": "2400",
+            "viewHeight": "2400",
+            "backGround": "#000000",
+            "gridVisible": "yes",
+            "gridColor": "#FFFFFF",
+            "gridSize": "10",
+            "canvasWidth": 2400,
+            "canvasHeight": 2400,
+            "gridStyle": "line",
+            "snapSize": "1",
+            "unit": "mil",
+            "routingWidth": "10",
+            "routingAngle": "45",
+            "copperAreaDisplay": "invisible",
+            "altSnapSize": "0.5",
+        },
+        "itemOrder": item_order,
+    }
+
+
+def pad_dict(gid: str, x: float, y: float, number: str, net: str) -> dict:
+    return {
+        "gId": gid,
+        "layerid": "11",
+        "shape": "ELLIPSE",
+        "x": x,
+        "y": y,
+        "net": net,
+        "width": PAD_SIZE,
+        "height": PAD_SIZE,
+        "number": number,
+        "holeR": HOLE_R,
+        "pointArr": [],
+        "rotation": "0",
+    }
+
+
+def _layers_expanded() -> dict:
+    return {
+        "1": {
+            "name": "TopLayer",
+            "color": "#FF0000",
+            "darkColor": "#CC0000",
+            "visible": True,
+            "active": True,
+            "config": True,
+        },
+        "2": {
+            "name": "BottomLayer",
+            "color": "#0000FF",
+            "darkColor": "#000080",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "3": {
+            "name": "TopSilkLayer",
+            "color": "#FFFF00",
+            "darkColor": "#B9B900",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "4": {
+            "name": "BottomSilkLayer",
+            "color": "#808000",
+            "darkColor": "#535300",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "5": {
+            "name": "TopPasterLayer",
+            "color": "#808080",
+            "darkColor": "#666666",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "6": {
+            "name": "BottomPasterLayer",
+            "color": "#800000",
+            "darkColor": "#660000",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "7": {
+            "name": "TopSolderLayer",
+            "color": "#800080",
+            "darkColor": "#660066",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "8": {
+            "name": "BottomSolderLayer",
+            "color": "#AA00FF",
+            "darkColor": "#8800CC",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "9": {
+            "name": "Ratlines",
+            "color": "#6464FF",
+            "darkColor": "#5050CC",
+            "visible": False,
+            "active": False,
+            "config": True,
+        },
+        "10": {
+            "name": "BoardOutline",
+            "color": "#FF00FF",
+            "darkColor": "#CC00CC",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "11": {
+            "name": "Multi-Layer",
+            "color": "#C0C0C0",
+            "darkColor": "#999999",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "12": {
+            "name": "Document",
+            "color": "#FFFFFF",
+            "darkColor": "#CCCCCC",
+            "visible": True,
+            "active": False,
+            "config": True,
+        },
+        "21": {
+            "name": "Inner1",
+            "color": "#800000",
+            "darkColor": "#660000",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "22": {
+            "name": "Inner2",
+            "color": "#008000",
+            "darkColor": "#006600",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "23": {
+            "name": "Inner3",
+            "color": "#00FF00",
+            "darkColor": "#00CC00",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+        "24": {
+            "name": "Inner4",
+            "color": "#000080",
+            "darkColor": "#000066",
+            "visible": False,
+            "active": False,
+            "config": False,
+        },
+    }
+
+
+def _default_standard_path(repo: Path, silk_labels: str) -> Path:
+    """Default JSON path: kit-specific / generic names avoid overwriting different silk modes."""
+    docs = repo / "docs"
+    if silk_labels == "none":
+        return docs / "easyeda-adapter-44pin-dev2bread.standard.json"
+    return docs / f"easyeda-adapter-44pin-dev2bread.{silk_labels}.standard.json"
+
+
+def _write_standard(path: Path, args: Namespace) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(
+            build_standard_compressed(
+                margin_mil=args.margin_mil,
+                stem_outline_margin_mil=args.stem_outline_margin_mil,
+                head_outline_extra_mil=args.head_outline_extra_mil,
+                silk_pin1=not args.no_silk_pin1,
+                silk_labels=args.silk_labels,
+            ),
+            f,
+            indent=1,
+        )
+    print(path)
+
+
+def main() -> None:
+    repo = _repo_root()
+    p = argparse.ArgumentParser(
+        description="Generate EasyEDA Standard PCB JSON for the 44-pin dev-to-breadboard adapter.",
+    )
+    p.add_argument(
+        "--legacy-expanded",
+        action="store_true",
+        help="Also write docs/easyeda-adapter-44pin-dev2bread.pcb.json (expanded; not for Pro)",
+    )
+    p.add_argument(
+        "--no-silk-pin1",
+        action="store_true",
+        help="Omit Top Silk circles marking pin 1 (wide + stem).",
+    )
+    p.add_argument(
+        "--silk-labels",
+        choices=("devkitc1", "numeric", "none"),
+        default="devkitc1",
+        help="Per-pin silk on head+stem: ESP32-S3-DevKitC-1 v1.1 names, logical 1–44, or text off.",
+    )
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Override output path (default: docs/easyeda-adapter-44pin-dev2bread.<variant>.standard.json).",
+    )
+    p.add_argument(
+        "--all-variants",
+        action="store_true",
+        help="Write both DevKitC-1 and numeric silk files to their default paths (ignores -o).",
+    )
+    p.add_argument(
+        "--margin-mil",
+        type=float,
+        default=None,
+        metavar="M",
+        help=f"Board outline inset from outermost pads (default {MARGIN}). Larger = more FR4 around pins.",
+    )
+    p.add_argument(
+        "--stem-outline-margin-mil",
+        type=float,
+        default=None,
+        metavar="M",
+        help=f"Extra width beyond stem pad columns (default {STEM_OUTLINE_MARGIN}).",
+    )
+    p.add_argument(
+        "--head-outline-extra-mil",
+        type=float,
+        default=None,
+        metavar="M",
+        help=f"Extra board beyond wide head left/right (default {HEAD_OUTLINE_EXTRA}).",
+    )
+    args = p.parse_args()
+
+    if args.all_variants:
+        for variant in ("devkitc1", "numeric"):
+            args.silk_labels = variant
+            outp = _default_standard_path(repo, variant)
+            _write_standard(outp, args)
+    else:
+        out = args.output or _default_standard_path(repo, args.silk_labels)
+        _write_standard(out, args)
+
+    if args.legacy_expanded:
+        leg_path = repo / "docs/easyeda-adapter-44pin-dev2bread.pcb.json"
+        with leg_path.open("w", encoding="utf-8") as f:
+            json.dump(build_legacy_expanded(), f, indent=1)
+        print(leg_path)
+
+
+if __name__ == "__main__":
+    main()
