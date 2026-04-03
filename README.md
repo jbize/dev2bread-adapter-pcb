@@ -14,6 +14,8 @@ Import `docs/easyeda-adapter-44pin-dev2bread.*.standard.json` in **EasyEDA Pro**
 
 Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**.
 
+**`docs/`** also holds reference photos (commercial adapter example, DevKit module) and optional **silk artwork** sources if you add bitmap branding in EasyEDA.
+
 ## Scripts
 
 | Script | Purpose |
