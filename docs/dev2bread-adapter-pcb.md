@@ -93,7 +93,7 @@ python3 scripts/generate_easyeda_adapter_pcb.py --all-variants           # write
 Use **`-o PATH`** to override the output file. **`--all-variants`** writes both kit-specific and numeric defaults (ignores `-o`).
 
 - **Silk (pin 1):** Two small **open circles** on Top Silk marking **pin 1** (wide head row A, stem). Omit with **`--no-silk-pin1`**.
-- **Per-pin silk text:** **88** Top Silk `TEXT` objects when `devkitc1` or `numeric` (two rows × 22 on the head + two columns × 22 on the stem). For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
+- **Per-pin silk text:** **88** Top Silk `TEXT` objects for `numeric` (two rows × 22 on the head + two columns × 22 on the stem). **`devkitc1` adds two more** **above the stem** (below the J3 GPIO row, not over those labels): **ESP32-S3-DevKitC-1** and **v1.1 · J1/J3** — **90** `TEXT` total. For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
 - Vector paths: `docs/data/devkitc1_gpio_silk_paths.json` and `docs/data/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**).
 - **Stronger board / more FR4:** `--margin-mil`, `--stem-outline-margin-mil`, `--head-outline-extra-mil`.
 - Optional legacy expanded JSON: `--legacy-expanded`

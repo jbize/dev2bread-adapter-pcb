@@ -17,8 +17,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     column’s pads at the same X.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
-    `docs/data/devkitc1_gpio_silk_paths.json`) or generic **1–44** (`--silk-labels numeric`,
-    `docs/data/numeric_silk_paths.json`). Re-bake paths with `scripts/bake_devkitc_gpio_silk_paths.py`.
+    `docs/data/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck, or generic
+    **1–44** (`--silk-labels numeric`, `docs/data/numeric_silk_paths.json`). Re-bake paths with
+    `scripts/bake_devkitc_gpio_silk_paths.py`.
 
 Two formats exist:
   * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
@@ -90,6 +91,15 @@ def stem_pin_y_mil(i: int) -> float:
     return y0 + i * PITCH
 
 
+def head_column_x_mil(i: int) -> float:
+    """X center (mil) for wide-head column index i (0..21). Nets 1…22 / 23…44 use the same i.
+
+    Pin 1 of each header sits at the **high-X** end of the row so a DevKitC-1 mates component-side
+    up with silk readable from above (Espressif J1/J3 pin 1 toward the neck / inner edge of the T).
+    """
+    return X0 + (NUM_PINS_PER_ROW - 1 - i) * PITCH
+
+
 def wide_head_y_positions_mil(*, side_a: bool) -> list[float]:
     """Y centers for the 4 breadboard-depth holes toward the trench (side A from Y_W_ROW_A down)."""
     n = WIDE_HEAD_DEPTH_HOLES
@@ -154,6 +164,43 @@ def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
     return " ".join(out)
 
 
+def _above_stem_board_id_center_mil() -> tuple[float, float]:
+    """Center for board-ID silk: below J3 row labels, above stem pads (same X as stem)."""
+    xc, _, _, y_stem_top = stem_layout_mil()
+    pad_half = PAD_SIZE / 2.0
+    # J3 per-pin silk sits near Y_W_ROW_B + off_head (~1442 mil); keep ID lower in the throat.
+    # ~120 mil above stem pad row centers clears two larger lines without overlapping stem pads.
+    y_mid = y_stem_top - pad_half - 120.0
+    return xc, y_mid
+
+
+def _append_devkitc_board_id_silk(
+    shapes: list[str],
+    nid: Callable[[], str],
+    *,
+    lines: list[dict[str, str]],
+) -> None:
+    """Two-line kit label between J3 row and stem (visible when stem is in a breadboard)."""
+    if not lines:
+        return
+    cx_mil, y_mid_mil = _above_stem_board_id_center_mil()
+    cx = mil_to_u(cx_mil)
+    # Stack lines: index 0 above center, index 1 below (reading top-to-bottom on the PCB +Y down).
+    n = len(lines)
+    if n == 1:
+        offs = [0.0]
+    else:
+        gap_mil = 64.0
+        total = gap_mil * (n - 1)
+        offs = [-total / 2.0 + i * gap_mil for i in range(n)]
+    for i, row in enumerate(lines):
+        lab = row["text"]
+        d0 = row["d"]
+        cy = mil_to_u(y_mid_mil + offs[i])
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+
+
 def _append_labeled_silk(
     shapes: list[str],
     nid: Callable[[], str],
@@ -169,14 +216,14 @@ def _append_labeled_silk(
     for i in range(NUM_PINS_PER_ROW):
         lab = j1[i]
         d0 = paths_map[lab]
-        cx = mil_to_u(X0 + i * PITCH)
+        cx = mil_to_u(head_column_x_mil(i))
         cy = mil_to_u(Y_W_ROW_A - off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
         shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
     for i in range(NUM_PINS_PER_ROW):
         lab = j3[i]
         d0 = paths_map[lab]
-        cx = mil_to_u(X0 + i * PITCH)
+        cx = mil_to_u(head_column_x_mil(i))
         cy = mil_to_u(Y_W_ROW_B + off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
         shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
@@ -207,7 +254,7 @@ def _silk_pin1_circles_mil() -> list[tuple[float, float, float]]:
     """Small open circles on Top Silk marking pin 1 (wide row A, stem). (cx, cy, r) in mil."""
     _, x_ln, _, y_stem_top = stem_layout_mil()
     ys_a = wide_head_y_positions_mil(side_a=True)
-    x_pad = X0
+    x_pad = head_column_x_mil(0)
     y_pad = ys_a[0]
     offset = 48.0
     r = 22.0
@@ -271,7 +318,7 @@ def build_standard_compressed(
     # Wide side A (nets 1–22): 4 pads per column → stem left column
     for i in range(NUM_PINS_PER_ROW):
         net = f"NET{i + 1}"
-        x = mil_to_u(X0 + i * PITCH)
+        x = mil_to_u(head_column_x_mil(i))
         xj = x - j
         y_s = mil_to_u(stem_pin_y_mil(i))
         num = str(i + 1)
@@ -297,7 +344,7 @@ def build_standard_compressed(
     # Wide side B (nets 23–44): 4 pads per column → stem right column
     for i in range(NUM_PINS_PER_ROW):
         net = f"NET{i + 23}"
-        x = mil_to_u(X0 + i * PITCH)
+        x = mil_to_u(head_column_x_mil(i))
         xj = x + j
         y_s = mil_to_u(stem_pin_y_mil(i))
         num = str(i + 23)
@@ -344,6 +391,11 @@ def build_standard_compressed(
                 print("Warning: DevKitC silk JSON pin count mismatch; skipping.", file=sys.stderr)
             else:
                 _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+                bid = raw.get("board_id_silk")
+                if isinstance(bid, dict) and isinstance(bid.get("lines"), list):
+                    _append_devkitc_board_id_silk(
+                        shapes, nid, lines=bid["lines"]
+                    )
     elif silk_labels == "numeric":
         data_path = _repo_root() / "docs/data/numeric_silk_paths.json"
         if not data_path.is_file():
@@ -491,7 +543,7 @@ def build_legacy_expanded() -> dict:
 
     for i in range(NUM_PINS_PER_ROW):
         net = f"NET{i + 1}"
-        x = X0 + i * PITCH
+        x = head_column_x_mil(i)
         xj = x - ROUTE_JOG_MIL
         ys_stem = stem_pin_y_mil(i)
         ys_head = wide_head_y_positions_mil(side_a=True)
@@ -536,7 +588,7 @@ def build_legacy_expanded() -> dict:
 
     for i in range(NUM_PINS_PER_ROW):
         net = f"NET{i + 23}"
-        x = X0 + i * PITCH
+        x = head_column_x_mil(i)
         xj = x + ROUTE_JOG_MIL
         ys_stem = stem_pin_y_mil(i)
         ys_head = wide_head_y_positions_mil(side_a=False)

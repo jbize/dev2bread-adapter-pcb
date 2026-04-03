@@ -22,7 +22,7 @@ Per-pin silk uses **vector paths** baked into JSON (EasyEDA `TEXT` is stroke pat
 
 | `--silk-labels` | Meaning | Data file |
 |-----------------|---------|-----------|
-| `devkitc1` | **ESP32-S3-DevKitC-1 v1.1** J1/J3 signal names (Espressif tables). **Kit-specific**; user must orient **J1 → side A**, **J3 → side B**. | `docs/data/devkitc1_gpio_silk_paths.json` |
+| `devkitc1` | **ESP32-S3-DevKitC-1 v1.1** J1/J3 signal names (Espressif tables). **Kit-specific** (not other DevKit shapes or revisions); user must orient **J1 → side A**, **J3 → side B**. Two-line **board ID** silk **between the J3 row and the stem** (visible when the stem is in a breadboard). | `docs/data/devkitc1_gpio_silk_paths.json` |
 | `numeric` | Generic **1–44** (matches logical net / pad numbers). **Not vendor-specific.** | `docs/data/numeric_silk_paths.json` |
 | `none` | No per-pin text silk (pin-1 **circles** still unless `--no-silk-pin1`). | — |
 

@@ -72,6 +72,11 @@ J3_SILK = [
 ]
 
 TARGET_H_FILE = 4.5  # ~45 mil letter height in EasyEDA file units (÷10 = mil)
+# Board identification (neck / base of head), devkitc1 silk only — not per-pin strings.
+BOARD_ID_LINES: tuple[tuple[str, float], ...] = (
+    ("ESP32-S3-DevKitC-1", 5.5),
+    ("v1.1 · J1/J3", 4.5),
+)
 
 
 def _path_to_d(path: MPath) -> str:
@@ -98,13 +103,13 @@ def _path_to_d(path: MPath) -> str:
     return " ".join(parts)
 
 
-def text_to_path_at_origin(label: str) -> str:
+def text_to_path_at_origin(label: str, *, target_h: float = TARGET_H_FILE) -> str:
     fp = FontProperties(family="DejaVu Sans", size=72)
     tp = TextPath((0, 0), label, prop=fp)
     path = MPath(tp.vertices, tp.codes)
     bb = path.get_extents()
     h = max(bb.height, 1e-6)
-    scale = TARGET_H_FILE / h
+    scale = target_h / h
     cx = (bb.x0 + bb.x1) / 2.0
     cy = (bb.y0 + bb.y1) / 2.0
     trans = (
@@ -123,12 +128,24 @@ def main() -> None:
     uniq = sorted(set(J1_SILK + J3_SILK), key=len)
     paths = {s: text_to_path_at_origin(s) for s in uniq}
     out_devkitc = root / "devkitc1_gpio_silk_paths.json"
+    board_lines = [
+        {"text": t, "d": text_to_path_at_origin(t, target_h=h)}
+        for t, h in BOARD_ID_LINES
+    ]
     meta = {
         "variant": "esp32-s3-devkitc-1-v1.1",
         "source": "Espressif ESP32-S3-DevKitC-1 v1.1 header tables (J1, J3)",
         "j1_order": J1_SILK,
         "j3_order": J3_SILK,
         "note": "Net i (1..22) = J1 pin i; net i+22 (23..44) = J3 pin i. Board orientation: J1 toward side A.",
+        "board_id_silk": {
+            "placement": "above_stem",
+            "note": (
+                "Top silk between J3 row and stem pads (avoids J3 GPIO labels); "
+                "visible when stem is in a breadboard."
+            ),
+            "lines": board_lines,
+        },
         "paths": paths,
     }
     out_devkitc.write_text(json.dumps(meta, indent=1), encoding="utf-8")
