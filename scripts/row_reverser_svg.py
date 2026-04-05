@@ -129,7 +129,6 @@ def emit_svg(
         f"      .via-x {{ stroke: #efe; stroke-width: {max(0.8, via_r * 0.12)}; }}",
         f"      .pad {{ fill: #444; stroke: #888; stroke-width: {round(max(1.5, _TRACE_STROKE * 0.35), 2)}; }}",
         f"      .lbl {{ fill: #9cf; font-size: {font_px * 0.85:.1f}px; font-weight: 500; }}",
-        f"      .via-lbl {{ fill: #b8e6c8; font-size: {max(8.0, font_px * 0.28):.1f}px; font-family: ui-monospace, Consolas, monospace; }}",
         "      .note { fill: #888; font-size: 11px; }",
         "      .dim { fill: #666; font-size: 10px; }",
         "    ]]></style>",
@@ -166,23 +165,15 @@ def emit_svg(
     lines.append("  </g>")
 
     vx = geom.via_cross_arm
-    lbl_fs = max(8.0, font_px * 0.28)
-    lbl_y = via_r + max(5.0, via_r * 0.45)
     lines.append('  <g aria-label="vias" stroke-linecap="round">')
-    for (x, y), vlab in zip(geom.vias, geom.via_labels, strict=True):
-        lines.append(
-            f'    <g transform="translate({x:.2f},{y:.2f})" id="via-{vlab}" '
-            f'aria-label="passthrough {vlab}">'
-        )
+    for x, y in geom.vias:
+        lines.append(f'    <g transform="translate({x:.2f},{y:.2f})">')
         lines.append(f'      <circle r="{via_r}" class="via"/>')
         lines.append(
             f'      <line x1="{-vx:.2f}" y1="0" x2="{vx:.2f}" y2="0" class="via-x"/>'
         )
         lines.append(
             f'      <line x1="0" y1="{-vx:.2f}" x2="0" y2="{vx:.2f}" class="via-x"/>'
-        )
-        lines.append(
-            f'      <text x="0" y="{lbl_y:.2f}" text-anchor="middle" class="via-lbl">{vlab}</text>'
         )
         lines.append("    </g>")
     lines.append("  </g>")
@@ -192,7 +183,7 @@ def emit_svg(
     )
     lines.append(
         f'  <text x="{cx_note:.1f}" y="-78" text-anchor="middle" class="note">'
-        f"{n} columns — J1 right … J{n} left; vias E1…E{n} (edge), G1…G{n - 1} (gap). "
+        f"{n} columns — J1 right … J{n} left. "
         f"First lane y={y_min_eff:.1f} mil (below holes). {span_note}.</text>"
     )
     lines.append("</svg>")

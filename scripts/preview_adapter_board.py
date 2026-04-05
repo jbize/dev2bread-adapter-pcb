@@ -181,6 +181,11 @@ def main() -> None:
         default=None,
         help="Omit top-row reverser overlay.",
     )
+    p.add_argument(
+        "--no-top-row-cyan-waypoints",
+        action="store_true",
+        help="Omit cyan polyline + 1…N waypoint labels on outer row A (preview only).",
+    )
     args = p.parse_args()
     profile = None
     if args.profile is not None:
@@ -249,6 +254,7 @@ def main() -> None:
         branding=branding,
         row_reverser=row_reverser,
         silk_gpio_paths_json=silk_gpio_paths_json,
+        top_row_cyan_waypoints=not args.no_top_row_cyan_waypoints,
     )
     print(out.resolve())
 

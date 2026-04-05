@@ -28,11 +28,11 @@ _DEFAULT_NECK_CLEARANCE_MIL = 4.0
 
 @dataclass(frozen=True)
 class ReverserHeadStubRouting:
-    """Cyan segments and bottom pads (order: ``E_n``, then ``G_1 … G_{n-1}``)."""
+    """Cyan segments and stub-end waypoints (order: ``E_n``, then ``G_1 … G_{n-1}``)."""
 
     cyan_segments: list[list[tuple[float, float]]]
-    # (x_mil, y_mil, net_str); net_str is row-A pad numbering str(column).
-    bottom_pads: list[tuple[float, float, str]]
+    # (x_mil, y_mil, net_str). Reference-only TP waypoints — not PCB copper/silk.
+    waypoints: list[tuple[float, float, str]]
 
 
 def reverser_head_stub_routing_mil(
@@ -92,8 +92,8 @@ def reverser_head_stub_routing_mil(
     cyan: list[list[tuple[float, float]]] = [
         [(x_e, y_bottom_right_via), (x_e, y_end)],
     ]
-    # Pads at stub ends: E_n → column n; G_k → column k (same nets as row-A PTHs).
-    pads: list[tuple[float, float, str]] = [(x_e, y_end, str(n))]
+    # Stub-end waypoints (same net labels as row-A column): E_n → n; G_k → k.
+    wpts: list[tuple[float, float, str]] = [(x_e, y_end, str(n))]
     for i in range(n - 1):
         ix = x_inner_horizontal_end(i)
         if ix is None:
@@ -101,8 +101,8 @@ def reverser_head_stub_routing_mil(
         yt = y_inner_terminal(i)
         if y_end > yt + 1e-6:
             cyan.append([(ix, yt), (ix, y_end)])
-            pads.append((ix, y_end, str(i + 1)))
-    return ReverserHeadStubRouting(cyan_segments=cyan, bottom_pads=pads)
+            wpts.append((ix, y_end, str(i + 1)))
+    return ReverserHeadStubRouting(cyan_segments=cyan, waypoints=wpts)
 
 
 def reverser_head_stub_cyan_segments_mil(

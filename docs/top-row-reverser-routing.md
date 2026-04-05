@@ -39,18 +39,18 @@ The row that needs **reversal** (often **J3** / nets **n+1 … 2n** in a full he
 
 **No extra mapping:** **`i`** is **not** rotated or translated relative to the layout code; **`i = 0`** is the **same** column as row-A net **`i+1`** (e.g. **1**) and row-B net **`i+n+1`** (e.g. **`n+1`**) for that column — for **any** adapter **N** (preview uses the **innermost row-A** pad line for **`y_pad`**).
 
-### Passthrough IDs in previews (SVG)
+### Naming pass-throughs (**E** / **G**)
 
-Preview SVGs label each routing via with a **unique** id (also `id="via-…"` for search / scripts). **Labels match pad numbering `J1…Jn` (1-based),** not the internal column index `i = 0…n−1`.
+Use **E** and **G** when talking about sites (not shown on preview vias). **Labels match pad numbering `J1…Jn` (1-based),** not the internal column index `i = 0…n−1`.
 
-| Label | Role |
-|-------|------|
+| Name | Role |
+|------|------|
 | **`E1` … `E_n`** | **Edge** stack pass-through for **pad column `Jk`** (**`k = i + 1`**): top of that column’s **red** trace (after the cyan from **Jk**). Same sites as **`V_{i}`** in the math above. |
 | **`G1` … `G_{n−1}`** | **Gap** pass-through at the **lower** end of **Jk**’s **red** segment (**larger Y** than **`Ek`** when **`dy > 0`**). **Jn** has **no** **`G`** — only **`E_n`**. |
 
 So **pad J1** uses **`E1`** (edge) then **`G1`** (bottom of that red run). Saying **“passthrough at the bottom of J1’s red trace”** means **`G1`**, not **`E1`**.
 
-**Implementation note:** code still uses **0-based** **`i`** for columns (usual in software); only **human-facing** **E/G** labels use **1-based** **`k = i + 1`** to align with **J** labels.
+**Implementation note:** code still uses **0-based** **`i`** for columns (usual in software); **E/G** names use **1-based** **`k = i + 1`** to align with **J** labels.
 
 ### Pin / hole ↔ via ↔ trace (preview)
 
@@ -84,7 +84,7 @@ When talking about **header top copper** (wide head, row-A side), it helps to se
 
 2. **Column stack ties** — On **top** copper only, **vertical** segments at each **`x(i)`** that join **every** row-A hole in that column (outer row-A through **`y_pad`**). So whichever header row you solder, the column is one net up to the diagonal.
 
-3. **Wide-head exit stubs** — Extra **cyan** from **`E_n`** and from **each** gap **`G_1 … G_{n−1}`** down to **`y_end`**, i.e. just **below** the **stem-side** (bottom) row of holes on the wide head — plus optional **PTH** pads at those ends (`adapter_gen/reverser_head_stubs`, merged in **`row_reverser_emit`**). This is still **on the wide head**; it is **not** T-stem / **neck** copper (routing in the narrow stem toward the breadboard is **not** implemented here).
+3. **Wide-head exit stubs** — Extra **cyan** from **`E_n`** and from **each** gap **`G_1 … G_{n−1}`** down to **`y_end`**, i.e. just **below** the **stem-side** (bottom) row of holes on the wide head (`adapter_gen/reverser_head_stubs`, merged in **`row_reverser_emit`**). Stub ends are **waypoints** for discussion: preview SVG draws **temporary** net labels at each bottom endpoint (`class="reverser-head-stub-temp-label"`, **`data-temp-preview-label="true"`**) and keeps **`id="reverser-head-tp-<net>"`**; EasyEDA export has **no** extra copper or silk for these. Still **on the wide head**; **not** T-stem copper.
 
 **Geometry list order** in code: **`geom.cyan`** is built as **(2) then the diagonal part of (1)** (ties first, then diagonals — ties feed the pad the diagonal starts from). **`append_row_reverser_easyeda_shapes`** then appends **(3)** to the top-copper track list before emitting bottom red and vias. Electrically the merged result is one connected top layer for each net; the **order** of **TRACK** strings in the JSON is not the same as the **design** order above.
 
@@ -92,7 +92,7 @@ For each **column `i`**, **join every pad in the top (row-A) socket stack** on *
 
 Then, from the **innermost** row-A pad at **`(x(i), y_pad)`**, route to **edge via `Vᵢ`** with the **short diagonal** on **layer A** only.
 
-**Wide-head exit stubs** on layer A (same **`y_end`**, just below the **stem-side** row of holes on the **wide head**): **one** vertical from **`E_n`** at **`(x_e, y_v(n−1))`**, and **one** from **each** gap **`G_1 … G_{n−1}`** from **`(x_inner_horizontal_end(i), y_inner_terminal(i))`** for **`i = 0 … n−2`** (each gap has its own **X**, so traces do not bridge nets). **Jn** has no **`G_n`** — nothing to mirror there. At each stub end, the EasyEDA build may place a **PTH pad** (same **net** **`1…n`** as the wide head **row-A** column for that stub). Implemented in **`adapter_gen/reverser_head_stubs.py`** and **`row_reverser_emit`** (not in **`row_reverser_geometry`**).
+**Wide-head exit stubs** on layer A (same **`y_end`**, just below the **stem-side** row of holes on the **wide head**): **one** vertical from **`E_n`** at **`(x_e, y_v(n−1))`**, and **one** from **each** gap **`G_1 … G_{n−1}`** from **`(x_inner_horizontal_end(i), y_inner_terminal(i))`** for **`i = 0 … n−2`** (each gap has its own **X**, so traces do not bridge nets). **Jn** has no **`G_n`** — nothing to mirror there. Implemented in **`adapter_gen/reverser_head_stubs.py`** and **`row_reverser_emit`** (not in **`row_reverser_geometry`**).
 
 **Build order** (implementation detail): often **i = 0, 1, …** along the edge stack, or **from the outside column inward** — keep **one net per via** and **no unintended shorts** between diagonals.
 

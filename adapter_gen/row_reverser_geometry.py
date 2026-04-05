@@ -51,9 +51,6 @@ class RowReverserGeometry:
     red: list[list[tuple[float, float]]]
     cyan: list[list[tuple[float, float]]]
     vias: list[tuple[float, float]]
-    # Same length as ``vias``: 1-based labels with pad Jk (k = i+1). Edge E{k} at (x_e, y_v(i));
-    # gap G{k} at inner end of red from lane i (i < n-1 only). Jn has E{n} only.
-    via_labels: list[str]
     via_cross_arm: float
     trace_stroke: float
     via_r: float
@@ -157,26 +154,21 @@ def _compute_row_reverser_core(
         cyan.append([(x_col(i), y_pad_row), (x_e, y_v(i))])
 
     vias: list[tuple[float, float]] = []
-    via_labels: list[str] = []
     for i in range(n):
         ye = y_v(i)
         inner_x = x_inner_horizontal_end(i)
         if inner_x is None:
             vias.append((x_e, ye))
-            via_labels.append(f"E{i + 1}")
         else:
             yi = y_inner_terminal(i)
             vias.append((x_e, ye))
             vias.append((inner_x, yi))
-            via_labels.append(f"E{i + 1}")
-            via_labels.append(f"G{i + 1}")
 
     via_cross = max(3.0, via_r * 0.45)
     return RowReverserGeometry(
         red=red,
         cyan=cyan,
         vias=vias,
-        via_labels=via_labels,
         via_cross_arm=via_cross,
         trace_stroke=trace_stroke,
         via_r=via_r,
