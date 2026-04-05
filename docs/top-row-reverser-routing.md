@@ -63,7 +63,11 @@ Each **column `i`** has **one PTH** in the row being reversed (hole center **`(x
 
 ## Layer A (e.g. top copper)
 
-For each **column `i`**, route from **that row’s** pad at column **`i`** to **edge via `Vᵢ`** with a **short diagonal** on **layer A** only.
+For each **column `i`**, **join every pad in the top (row-A) socket stack** on **layer A** with **vertical** segments at **`x(i)`** from the **outer** row-A row through successive rows down to the **innermost** row-A pad line (the row used as **`y_pad`** for the reverser). That ties all optional header positions in the column to the same top-layer path before the run to the edge.
+
+Then, from the **innermost** row-A pad at **`(x(i), y_pad)`**, route to **edge via `Vᵢ`** with the **short diagonal** on **layer A** only.
+
+One optional top-layer vertical runs from the **bottom-right** reverser passthrough — the **lowest** edge-stack via **`V_{n−1}`** at **`(x_e, y_v(n−1))`** — straight down to just below the **stem-side** row of holes on the wide head (the bottom row of the header socket grid before the neck).
 
 **Build order** (implementation detail): often **i = 0, 1, …** along the edge stack, or **from the outside column inward** — keep **one net per via** and **no unintended shorts** between diagonals.
 

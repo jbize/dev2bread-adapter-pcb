@@ -81,6 +81,8 @@ def _compute_row_reverser_core(
     trace_stroke: float,
     max_y_span: float | None,
     y_min_floor: float | None = None,
+    row_a_y_ascending: list[float] | None = None,
+    stem_side_row_b_y: float | None = None,
 ) -> RowReverserGeometry | None:
     if n < 2:
         return None
@@ -142,8 +144,24 @@ def _compute_row_reverser_core(
                 red.append([(x_e, y_e), (x_end, y_i)])
 
     cyan: list[list[tuple[float, float]]] = []
+    # Layer A: join every row-A pad in each column (top socket stack) before the diagonal to V_i.
+    if row_a_y_ascending is not None and len(row_a_y_ascending) >= 2:
+        ys_join = list(row_a_y_ascending)
+        for i in range(n):
+            xi = x_col(i)
+            for k in range(len(ys_join) - 1):
+                cyan.append([(xi, ys_join[k]), (xi, ys_join[k + 1])])
     for i in range(n):
         cyan.append([(x_col(i), y_pad_row), (x_e, y_v(i))])
+
+    # Bottom-right passthrough in the reverser head = edge via V_{n-1} at (x_e, y_v(n-1)): lowest
+    # edge-stack via, right of the pad columns. One top-layer stub straight down to just below the
+    # stem-side row of the wide head (bottom socket row on the head, before the neck).
+    if stem_side_row_b_y is not None and n >= 2:
+        y_bottom_right_via = y_v(n - 1)
+        y_end = stem_side_row_b_y + pad_r + neck_clearance_mil + trace_stroke / 2.0
+        if y_end > y_bottom_right_via + 1e-6:
+            cyan.append([(x_e, y_bottom_right_via), (x_e, y_end)])
 
     vias: list[tuple[float, float]] = []
     for i in range(n):
@@ -187,12 +205,22 @@ def compute_row_reverser_geometry_mil(
     Uses ``n = p.num_cols`` (no fixed pin count — whatever ``BoardParams`` the adapter build uses).
     Column ``i`` matches ``head_column_x_mil(i, p)``. Edge via column is to the right of
     column 0 at ``head_column_x_mil(0, p) + edge_offset_mil``.
+
+    On layer A (cyan), when there are multiple row-A socket rows, each column first gets vertical
+    segments joining all of those pad centers at ``x(i)``, then the usual diagonal from the
+    innermost row-A pad (``y_pad_row``) to edge via ``V_i``.
+
+    One extra cyan segment runs from the bottom-right edge passthrough ``V_{n-1}`` (``x_e``,
+    ``y_v(n-1)``) vertically down to just below the stem-side row of the wide head (Y from
+    ``wide_head_y_rows_mil(..., from_row_a=False)[0]``).
     """
     n = p.num_cols
 
     def x_col(i: int) -> float:
         return head_column_x_mil(i, p)
 
+    ys_a = wide_head_y_rows_mil(p=p, from_row_a=True)
+    y_b_stem = wide_head_y_rows_mil(p=p, from_row_a=False)[0]
     return _compute_row_reverser_core(
         n,
         x_col,
@@ -205,6 +233,8 @@ def compute_row_reverser_geometry_mil(
         trace_stroke=trace_stroke,
         max_y_span=max_y_span,
         y_min_floor=y_min_floor,
+        row_a_y_ascending=ys_a,
+        stem_side_row_b_y=y_b_stem,
     )
 
 
@@ -240,6 +270,8 @@ def compute_row_reverser_geometry_mil_standalone(
         trace_stroke=trace_stroke,
         max_y_span=max_y_span,
         y_min_floor=y_min_floor,
+        row_a_y_ascending=None,
+        stem_side_row_b_y=None,
     )
 
 

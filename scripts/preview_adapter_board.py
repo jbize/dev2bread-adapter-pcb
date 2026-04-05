@@ -42,6 +42,10 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
+
+ensure_matplotlib()
+
 try:
     from adapter_gen.board_profile import (  # noqa: E402
         BoardProfile,
