@@ -4,9 +4,9 @@ One-off: build EasyEDA TEXT path strings for adapter silk (DejaVu Sans).
 
 Requires: matplotlib (use project venv: .venv/bin/python scripts/bake_devkitc_gpio_silk_paths.py)
 
-Writes:
-  * docs/data/devkitc1_gpio_silk_paths.json — ESP32-S3-DevKitC-1 v1.1 J1/J3 names
-  * docs/data/numeric_silk_paths.json — strings "1" .. "44" (generic pin index silk)
+Writes (under repo `out/silk/`; gitignored — run before board generation):
+  * devkitc1_gpio_silk_paths.json — ESP32-S3-DevKitC-1 v1.1 J1/J3 names
+  * numeric_silk_paths.json — strings "1" .. "44" (generic pin index silk)
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def text_to_path_at_origin(label: str, *, target_h: float = TARGET_H_FILE) -> st
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parent.parent / "docs/data"
+    root = Path(__file__).resolve().parent.parent / "out" / "silk"
     root.mkdir(parents=True, exist_ok=True)
 
     uniq = sorted(set(J1_SILK + J3_SILK), key=len)

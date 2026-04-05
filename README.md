@@ -2,19 +2,20 @@
 
 T-shaped **44-pin** adapter PCB: wide head for a development board (e.g. ESP32 class, ~1.1″ row spacing) and narrow stem for a solderless breadboard (~0.5″ straddle). **1:1** routing (logical pin 1→1 … 44→44).
 
-This repository holds the **EasyEDA Standard** generator, baked silk vector data, and documentation. It is split from firmware projects so the hardware layout can evolve on its own.
+This repository holds the **EasyEDA Standard** generator, documentation, and **static** assets under **`resources/`**. **Generated** silk paths and EasyEDA JSON are written to **`out/`** (gitignored — run the scripts locally).
 
 ## Quick start
 
 ```bash
+python3 scripts/bake_devkitc_gpio_silk_paths.py   # once: needs venv + matplotlib
 python3 scripts/generate_easyeda_adapter_pcb.py --all-variants
 ```
 
-Import `docs/easyeda-adapter-44pin-dev2bread.*.standard.json` in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab.
+Import `out/easyeda-adapter-44pin-dev2bread.*.standard.json` in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab.
 
 Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**. For **AI / handoff context** (terminology, silk modes, pitfalls, repo split): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)**.
 
-**`docs/`** also holds reference photos: commercial adapter example, DevKit module, **breadboard misfitment** (`esp32-s3-squeeze.jpeg`), and optional **silk artwork** sources if you add bitmap branding in EasyEDA.
+**`resources/images/`** holds reference photos (e.g. DevKit module, **breadboard misfitment**). Optional **silk artwork** for bitmap branding in EasyEDA can live there too.
 
 ## Scripts
 

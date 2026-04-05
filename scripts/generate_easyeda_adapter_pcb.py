@@ -17,9 +17,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     column’s pads at the same X.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
-    `docs/data/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck, or generic
-    **1–44** (`--silk-labels numeric`, `docs/data/numeric_silk_paths.json`). Re-bake paths with
-    `scripts/bake_devkitc_gpio_silk_paths.py`.
+    `out/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck, or generic
+    **1–44** (`--silk-labels numeric`, `out/silk/numeric_silk_paths.json`). Re-bake paths with
+    `scripts/bake_devkitc_gpio_silk_paths.py` (writes under `out/silk/`; not committed).
 
 Two formats exist:
   * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
@@ -139,6 +139,14 @@ def _board_outline_polygon_mil(
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
+
+
+def _out_dir() -> Path:
+    return _repo_root() / "out"
+
+
+def _silk_dir() -> Path:
+    return _out_dir() / "silk"
 
 
 def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
@@ -375,7 +383,7 @@ def build_standard_compressed(
             )
 
     if silk_labels == "devkitc1":
-        data_path = _repo_root() / "docs/data/devkitc1_gpio_silk_paths.json"
+        data_path = _silk_dir() / "devkitc1_gpio_silk_paths.json"
         if not data_path.is_file():
             print(
                 f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py "
@@ -397,7 +405,7 @@ def build_standard_compressed(
                         shapes, nid, lines=bid["lines"]
                     )
     elif silk_labels == "numeric":
-        data_path = _repo_root() / "docs/data/numeric_silk_paths.json"
+        data_path = _silk_dir() / "numeric_silk_paths.json"
         if not data_path.is_file():
             print(
                 f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py. "
@@ -844,10 +852,10 @@ def _layers_expanded() -> dict:
 
 def _default_standard_path(repo: Path, silk_labels: str) -> Path:
     """Default JSON path: kit-specific / generic names avoid overwriting different silk modes."""
-    docs = repo / "docs"
+    base = repo / "out"
     if silk_labels == "none":
-        return docs / "easyeda-adapter-44pin-dev2bread.standard.json"
-    return docs / f"easyeda-adapter-44pin-dev2bread.{silk_labels}.standard.json"
+        return base / "easyeda-adapter-44pin-dev2bread.standard.json"
+    return base / f"easyeda-adapter-44pin-dev2bread.{silk_labels}.standard.json"
 
 
 def _write_standard(path: Path, args: Namespace) -> None:
@@ -875,7 +883,7 @@ def main() -> None:
     p.add_argument(
         "--legacy-expanded",
         action="store_true",
-        help="Also write docs/easyeda-adapter-44pin-dev2bread.pcb.json (expanded; not for Pro)",
+        help="Also write out/easyeda-adapter-44pin-dev2bread.pcb.json (expanded; not for Pro)",
     )
     p.add_argument(
         "--no-silk-pin1",
@@ -894,7 +902,7 @@ def main() -> None:
         type=Path,
         default=None,
         metavar="FILE",
-        help="Override output path (default: docs/easyeda-adapter-44pin-dev2bread.<variant>.standard.json).",
+        help="Override output path (default: out/easyeda-adapter-44pin-dev2bread.<variant>.standard.json).",
     )
     p.add_argument(
         "--all-variants",
@@ -934,7 +942,8 @@ def main() -> None:
         _write_standard(out, args)
 
     if args.legacy_expanded:
-        leg_path = repo / "docs/easyeda-adapter-44pin-dev2bread.pcb.json"
+        leg_path = _out_dir() / "easyeda-adapter-44pin-dev2bread.pcb.json"
+        leg_path.parent.mkdir(parents=True, exist_ok=True)
         with leg_path.open("w", encoding="utf-8") as f:
             json.dump(build_legacy_expanded(), f, indent=1)
         print(leg_path)

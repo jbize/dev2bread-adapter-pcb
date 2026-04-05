@@ -22,11 +22,11 @@ Per-pin silk uses **vector paths** baked into JSON (EasyEDA `TEXT` is stroke pat
 
 | `--silk-labels` | Meaning | Data file |
 |-----------------|---------|-----------|
-| `devkitc1` | **ESP32-S3-DevKitC-1 v1.1** J1/J3 signal names (Espressif tables). **Kit-specific** (not other DevKit shapes or revisions); user must orient **J1 → side A**, **J3 → side B**. Two-line **board ID** silk **between the J3 row and the stem** (visible when the stem is in a breadboard). | `docs/data/devkitc1_gpio_silk_paths.json` |
-| `numeric` | Generic **1–44** (matches logical net / pad numbers). **Not vendor-specific.** | `docs/data/numeric_silk_paths.json` |
+| `devkitc1` | **ESP32-S3-DevKitC-1 v1.1** J1/J3 signal names (Espressif tables). **Kit-specific** (not other DevKit shapes or revisions); user must orient **J1 → side A**, **J3 → side B**. Two-line **board ID** silk **between the J3 row and the stem** (visible when the stem is in a breadboard). | `out/silk/devkitc1_gpio_silk_paths.json` (generated; run bake script) |
+| `numeric` | Generic **1–44** (matches logical net / pad numbers). **Not vendor-specific.** | `out/silk/numeric_silk_paths.json` (generated; run bake script) |
 | `none` | No per-pin text silk (pin-1 **circles** still unless `--no-silk-pin1`). | — |
 
-Default output filenames avoid overwriting variants: `easyeda-adapter-44pin-dev2bread.<variant>.standard.json` (see `docs/dev2bread-adapter-pcb.md`). **`--all-variants`** writes devkitc1 + numeric defaults.
+Default output filenames avoid overwriting variants: `out/easyeda-adapter-44pin-dev2bread.<variant>.standard.json` (see `docs/dev2bread-adapter-pcb.md`). **`--all-variants`** writes devkitc1 + numeric defaults.
 
 **Why GPIO silk:** On a breadboard, **logical 1…44** doesn’t match how people think (ESP32 **GPIO** names). DevKitC silk aligns with the **module’s** header naming when the board is oriented correctly.
 
@@ -34,14 +34,14 @@ Default output filenames avoid overwriting variants: `easyeda-adapter-44pin-dev2
 
 | Script | When to run |
 |--------|----------------|
-| `scripts/generate_easyeda_adapter_pcb.py` | **Always** for PCB JSON changes. **No matplotlib** required for normal use. |
-| `scripts/bake_devkitc_gpio_silk_paths.py` | Only when **regenerating** silk path JSON (fonts, labels). Needs **venv + matplotlib**. Writes both DevKitC and numeric path files. |
+| `scripts/generate_easyeda_adapter_pcb.py` | **Always** for PCB JSON changes. The script does not import matplotlib; for **`devkitc1` / `numeric` silk**, run **`bake` first** so **`out/silk/*.json`** exist. |
+| `scripts/bake_devkitc_gpio_silk_paths.py` | Before first **`devkitc1` / `numeric`** generation, and when **regenerating** silk paths (fonts, labels). Needs **venv + matplotlib**. Writes **`out/silk/`** (both DevKitC and numeric files). |
 
-## Reference assets in `docs/`
+## Reference assets in `resources/images/`
 
-- **`example-44pin-beradboard adapter.jpg`** — commercial adapter style reference (filename typo preserved).
 - **`esp32-s3-squeeze.jpeg`** — **misfitment** demo: DevKitC-1 too wide; tie points blocked without an adapter.
 - **`esp32-S3-N16R8.jpeg`**, **`godswind-east.jpeg`** — module / optional branding artwork references.
+- **`ESP32-S3-DevKitC-1.jpeg`** — DevKit module photo reference.
 
 ## Repository history
 

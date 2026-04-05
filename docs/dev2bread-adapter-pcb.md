@@ -42,7 +42,7 @@ On a typical full breadboard, the **left** half of each row is **a–e** (**e** 
 
 ## Geometry (reference layout)
 
-- **Head:** 22 columns along **+X** (**0.1″**). The two long sides are separated along **+Y** by **~1.1″** (`WIDE_ROW_GAP`). Nets **1–22** on the **A** side (stepping from `Y_W_ROW_A` toward the gap), **23–44** on the **B** side (stepping inward from `Y_W_ROW_B`).
+- **Head:** 22 columns along **+X** (**0.1″**). Column **0** is the **left** edge of the head (smaller **X**); **21** is the **right**. The two long sides are separated along **+Y** by **~1.1″** (`WIDE_ROW_GAP`). **J3** nets **23–44** on the **top** row (GND, TX, RX … at **top-left**), **J1** nets **1–22** on the **bottom** row (3V3, RST …). The **stem** was not mirrored: only head column **X** order was set to match the DevKitC-1 J1/J3 rows.
 - **Wide “breadboard depth”:** `WIDE_HEAD_DEPTH_HOLES` (**4**) holes per column per side, same pitch as the breadboard grid in that direction.
 - **Stem (90° vs head):** The **22-pin** direction runs along **+Y**; straddle spacing along **+X** (**~0.5″**, `NARROW_ROW_GAP`). Stem is centered under the head.
 - **Routing:** Vertical links between the four wide pads on a net, then a Manhattan path from the **innermost** wide pad to the stem (with `ROUTE_JOG_MIL` so routes in the gap do not clip against the opposite side’s pads at the same column).
@@ -69,7 +69,7 @@ The adapter is **44 pins** total: **2 × 22** on the head and the same **2 × 22
 | Script | Role |
 |--------|------|
 | **`scripts/generate_easyeda_adapter_pcb.py`** | Builds the **EasyEDA Standard** PCB JSON (copper, outline, silk). Run this whenever you change geometry or silk mode. |
-| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **One-time / when fonts change:** regenerates **vector path** JSON for silk text (needs a **venv** + **matplotlib**). Not required for normal board generation if `docs/data/*.json` are already present. |
+| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`out/silk/*.json`** (needs a **venv** + **matplotlib**). Re-run when fonts or label tables change. |
 
 ### EasyEDA files (default names)
 
@@ -77,9 +77,9 @@ Import in **EasyEDA Pro**: **File → Import → Import EasyEDA Standard Edition
 
 | Output file | Contents |
 |-------------|----------|
-| **`docs/easyeda-adapter-44pin-dev2bread.devkitc1.standard.json`** | **Kit-specific silk:** ESP32-S3-DevKitC-1 v1.1 J1/J3 names (same mapping as [Espressif’s tables](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html)). Use when the dev board is that kit. |
-| **`docs/easyeda-adapter-44pin-dev2bread.numeric.standard.json`** | **Generic silk:** labels **1–44** only (matches logical net index / copper pad numbers — not tied to a vendor pinout). |
-| **`docs/easyeda-adapter-44pin-dev2bread.standard.json`** | **No per-pin silk text** (pin-1 circles still on unless `--no-silk-pin1`). |
+| **`out/easyeda-adapter-44pin-dev2bread.devkitc1.standard.json`** | **Kit-specific silk:** ESP32-S3-DevKitC-1 v1.1 J1/J3 names (same mapping as [Espressif’s tables](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html)). Use when the dev board is that kit. |
+| **`out/easyeda-adapter-44pin-dev2bread.numeric.standard.json`** | **Generic silk:** labels **1–44** only (matches logical net index / copper pad numbers — not tied to a vendor pinout). |
+| **`out/easyeda-adapter-44pin-dev2bread.standard.json`** | **No per-pin silk text** (pin-1 circles still on unless `--no-silk-pin1`). |
 
 Regenerate examples:
 
@@ -94,7 +94,7 @@ Use **`-o PATH`** to override the output file. **`--all-variants`** writes both 
 
 - **Silk (pin 1):** Two small **open circles** on Top Silk marking **pin 1** (wide head row A, stem). Omit with **`--no-silk-pin1`**.
 - **Per-pin silk text:** **88** Top Silk `TEXT` objects for `numeric` (two rows × 22 on the head + two columns × 22 on the stem). **`devkitc1` adds two more** **above the stem** (below the J3 GPIO row, not over those labels): **ESP32-S3-DevKitC-1** and **v1.1 · J1/J3** — **90** `TEXT` total. For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
-- Vector paths: `docs/data/devkitc1_gpio_silk_paths.json` and `docs/data/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**).
+- Vector paths: `out/silk/devkitc1_gpio_silk_paths.json` and `out/silk/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
 - **Stronger board / more FR4:** `--margin-mil`, `--stem-outline-margin-mil`, `--head-outline-extra-mil`.
 - Optional legacy expanded JSON: `--legacy-expanded`
 
