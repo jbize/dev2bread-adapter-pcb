@@ -1,0 +1,26 @@
+# ESP32 DevKit V1 — classic 30-pin breakout (2×15, 0.1″ pitch).
+# Typical ESP32-WROOM-32 module; micro-USB at bottom, EN/BOOT, CP2102, AMS1117-3.3.
+#
+# Pinout (silk left / right as viewed with USB toward you, module at top):
+#   Left (15):  EN, VP, VN, D34, D35, D32, D33, D25, D26, D27, D14, D12, D13, GND, VIN
+#   Right (15): D23, D22, TXO, RXO, D21, D19, D18, D5, TX2, RX2, D4, D2, D15, GND, 3V3
+# Adapter nets: 1–15 = left column top→bottom; 16–30 = right column top→bottom.
+
+schema = 1
+
+id = "esp32-devkit-v1"
+title = "ESP32 DevKit V1 (30-pin)"
+description = "Two 15-pin headers (ESP32-WROOM-32 class DevKit V1); full breakout uses both rows."
+
+# All header pins on this PCB.
+device_min_pins = 30
+
+# T-adapter footprint: 30 pins (15 columns × 2 rows).
+adapter_pins = 30
+
+silk_profile = "generic"
+
+[geometry]
+n_rows_top = 4
+n_rows_bottom = 4
+omit_row_b_gap_adjacent = true
