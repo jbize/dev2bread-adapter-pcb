@@ -1,6 +1,6 @@
 # Top-row pin reverser (two-layer routing algorithm)
 
-**Scope:** N-pin / N-hole dev-to-breadboard adapter, **two copper layers** (e.g. Top + Bottom), using **plated through-holes** as layer-to-layer transitions (“pass-throughs” / vias).
+**Scope:** N-pin / N-hole dev-to-breadboard adapter (any **N** the generator supports), **two copper layers** (e.g. Top + Bottom), using **plated through-holes** as layer-to-layer transitions (“pass-throughs” / vias). The routing rules are the same for every column count **n = N/2**.
 
 **Goal:** Electrically **reverse the order** of signals along **one** long row of the wide head so that, after this block, net order matches the breadboard / stem convention.
 
@@ -29,7 +29,7 @@ Use **one** index **`i = 0 … n − 1`** aligned with **`head_column_x_mil(i, p
 | Symbol | Meaning |
 |--------|---------|
 | **N** | Total plated holes on the adapter head for this routing block (even). |
-| **n** | Holes in **one** long row: **n = N/2** (e.g. 44-pin → **n = 22**). |
+| **n** | Holes in **one** long row: **n = N/2** (adapter column count; scales with **N**). |
 | **i** | **Column index** in **`adapter_gen`**: **`i = 0`** is the **right** column (**largest X**); **`i = n − 1`** is the **left** column (**smallest X**). |
 | **J1 … Jn** (preview labels) | **Human-readable** column labels: **J1** is the **right** pad (**`i = 0`**), **Jn** is the **left** pad (**`i = n − 1`**), matching **`adapter_gen`** and **J1 net 1** on column **0**. The preview script `scripts/row_reverser_svg.py` draws these on pads (not the Espressif **J1/J3** connector names). |
 | **J1 net on column i** | **`i + 1`** (wide row A). |
@@ -37,7 +37,7 @@ Use **one** index **`i = 0 … n − 1`** aligned with **`head_column_x_mil(i, p
 
 The row that needs **reversal** (often **J3** / nets **n+1 … 2n** in a full head) is still **one pad per column `i`** — you route from **that** row’s pad at **`(head_column_x_mil(i), y_row)`**, not a second indexing scheme.
 
-**No extra mapping:** **`i`** is **not** rotated or translated relative to the layout code; **`i = 0`** is the **same** column as **J1 pin 1** (net **1**) and **J3 pin 23** (net **n+1**) on a 44-pin board.
+**No extra mapping:** **`i`** is **not** rotated or translated relative to the layout code; **`i = 0`** is the **same** column as row-A net **`i+1`** (e.g. **1**) and row-B net **`i+n+1`** (e.g. **`n+1`**) for that column — for **any** adapter **N** (preview uses the **innermost row-A** pad line for **`y_pad`**).
 
 ### Pin / hole ↔ via ↔ trace (preview)
 
@@ -95,3 +95,4 @@ There are **n − 1** gap sites **G₀ … Gₙ₋₂** (**Gₖ** = between **co
 - `scripts/row_reverser_svg.py` — preview SVG in **mil** (`--columns N`): 0.1″ pitch, PTH/via scale from `adapter_gen.geometry`; **`i ≤ n−3`** red **horizontal** **to** **`P_{n−2}→V_{n−2}`** (**J6** cyan), inner **`y = y_v(i+1)`**; **`i = n−2`** one diagonal; vertical stack `dy = 2×via_r + trace_gap` or `--max-y-span`; cyan diagonals. Default `out/preview/row-reverser-<N>.svg`.
 - `docs/dev2bread-adapter-pcb.md` — adapter terminology and geometry constants.
 - `adapter_gen/geometry.py` — **`head_column_x_mil`**, **`wide_head_y_rows_mil`**.
+- `adapter_gen/svg_preview.py` — full-board SVG: same geometry via **`compute_row_reverser_geometry_mil`**, **`y_pad`** = innermost row-A row (bottom of the top socket stack).

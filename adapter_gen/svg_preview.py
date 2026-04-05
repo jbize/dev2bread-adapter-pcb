@@ -1,4 +1,8 @@
-"""Emit minimal SVG for board outline + drill holes (optional silk overlay)."""
+"""Emit minimal SVG for board outline + drill holes (optional silk overlay).
+
+The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_cols`` and the
+innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +17,11 @@ from adapter_gen.geometry import (
     all_pad_centers_mil,
     board_outline_svg_path_d,
     bounds_mil,
+)
+from adapter_gen.row_reverser_geometry import (
+    compute_row_reverser_geometry_mil,
+    polyline_points_attr,
+    row_reverser_y_pad_row_a_innermost_mil,
 )
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
@@ -38,6 +47,7 @@ def emit_board_svg(
     silk_mode: str | None = None,
     silk_dir: Path | None = None,
     branding: BoardBranding | None = None,
+    row_reverser: bool = False,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     min_x, min_y, max_x, max_y = bounds_mil(p)
@@ -58,6 +68,8 @@ def emit_board_svg(
         title_bits.append(f"silk={silk_mode}")
     if branding is not None:
         title_bits.append("branding")
+    if row_reverser:
+        title_bits.append("row-A inner reverser sketch")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -107,6 +119,95 @@ def emit_board_svg(
                 "r": f"{HOLE_R:.2f}",
             },
         )
+
+    if row_reverser:
+        y_pad = row_reverser_y_pad_row_a_innermost_mil(p)
+        geom = compute_row_reverser_geometry_mil(p, y_pad_row=y_pad)
+        if geom is not None:
+            tw = f"{geom.trace_stroke:.1f}"
+            g_rr = _sub(svg, "g", {"id": "row-reverser"})
+            g_in = _sub(
+                g_rr,
+                "g",
+                {
+                    "id": "row-reverser-inner",
+                    "fill": "none",
+                    "stroke": "#cc3333",
+                    "stroke-width": tw,
+                    "stroke-linecap": "round",
+                    "stroke-linejoin": "round",
+                },
+            )
+            for seg in geom.red:
+                _sub(
+                    g_in,
+                    "polyline",
+                    {"points": polyline_points_attr(seg)},
+                )
+            g_out = _sub(
+                g_rr,
+                "g",
+                {
+                    "id": "row-reverser-outer",
+                    "fill": "none",
+                    "stroke": "#5599dd",
+                    "stroke-width": tw,
+                    "stroke-linecap": "round",
+                    "stroke-linejoin": "round",
+                },
+            )
+            for seg in geom.cyan:
+                _sub(
+                    g_out,
+                    "polyline",
+                    {"points": polyline_points_attr(seg)},
+                )
+            vx = geom.via_cross_arm
+            vr = f"{geom.via_r:.2f}"
+            g_v = _sub(
+                g_rr,
+                "g",
+                {
+                    "id": "row-reverser-vias",
+                    "fill": "#2a6644",
+                    "stroke": "#88cc88",
+                    "stroke-width": "1.5",
+                    "stroke-linecap": "round",
+                },
+            )
+            for vx_m, vy_m in geom.vias:
+                g_one = _sub(
+                    g_v,
+                    "g",
+                    {
+                        "transform": f"translate({vx_m:.2f},{vy_m:.2f})",
+                    },
+                )
+                _sub(g_one, "circle", {"r": vr})
+                _sub(
+                    g_one,
+                    "line",
+                    {
+                        "x1": f"{-vx:.2f}",
+                        "y1": "0",
+                        "x2": f"{vx:.2f}",
+                        "y2": "0",
+                        "stroke": "#eef6ee",
+                        "stroke-width": f"{max(0.8, geom.via_r * 0.12):.2f}",
+                    },
+                )
+                _sub(
+                    g_one,
+                    "line",
+                    {
+                        "x1": "0",
+                        "y1": f"{-vx:.2f}",
+                        "x2": "0",
+                        "y2": f"{vx:.2f}",
+                        "stroke": "#eef6ee",
+                        "stroke-width": f"{max(0.8, geom.via_r * 0.12):.2f}",
+                    },
+                )
 
     if silk_mode and silk_mode != "none":
         sd = (silk_dir or _DEFAULT_SILK_DIR).resolve()

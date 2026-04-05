@@ -10,9 +10,10 @@ the board profile's ``silk_profile`` when present.
 
 **CLI-only** (repo root: ``./scripts/preview_adapter_board.py`` — shebang ``python3``)
 
-  ./scripts/preview_adapter_board.py --pins 44
-      # → out/preview/board-44pin.svg
+  ./scripts/preview_adapter_board.py --pins <N>
+      # → out/preview/board-<N>pin.svg; row-A inner reverser sketch on by default (any N)
 
+  ./scripts/preview_adapter_board.py --pins 14 --no-row-reverser
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk devkitc1
 
 Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb.py`` emits
@@ -143,6 +144,21 @@ def main() -> None:
         action="store_true",
         help="Omit optional board branding from TOML ([branding] text / image), even if defined.",
     )
+    rr = p.add_mutually_exclusive_group()
+    rr.add_argument(
+        "--row-reverser",
+        dest="row_reverser",
+        action="store_true",
+        default=None,
+        help="Draw row-A inner reverser routing sketch (scales with --pins / profile). Default: on.",
+    )
+    rr.add_argument(
+        "--no-row-reverser",
+        dest="row_reverser",
+        action="store_false",
+        default=None,
+        help="Omit top-row reverser overlay.",
+    )
     args = p.parse_args()
     profile = None
     if args.profile is not None:
@@ -193,12 +209,18 @@ def main() -> None:
     ):
         branding = profile.branding
 
+    if args.row_reverser is not None:
+        row_reverser = args.row_reverser
+    else:
+        row_reverser = True
+
     emit_board_svg(
         bp,
         out,
         silk_mode=None if silk_mode == "none" else silk_mode,
         silk_dir=silk_dir,
         branding=branding,
+        row_reverser=row_reverser,
     )
     print(out.resolve())
 

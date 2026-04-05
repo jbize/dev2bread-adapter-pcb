@@ -12,7 +12,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
   * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
     column (breadboard-style depth) — solder headers in **one** row only to match different
     dev-board widths. **TopLayer copper routing between pads is not emitted** (outline + drills +
-    silk + branding only); a new router will replace the old behavior.
+    silk + branding only). Top-row row-reverser geometry for hand routing is in
+    ``adapter_gen/row_reverser_geometry.py`` and ``docs/top-row-reverser-routing.md``; SVG previews
+    draw it with ``emit_board_svg(..., row_reverser=True)`` for whatever pin count you build.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,

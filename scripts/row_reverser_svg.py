@@ -37,7 +37,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 try:
-    from adapter_gen.geometry import HOLE_R, PAD_SIZE, PITCH
+    from adapter_gen.geometry import HOLE_R, PITCH
+    from adapter_gen.row_reverser_geometry import (
+        compute_row_reverser_geometry_mil_standalone,
+        polyline_points_attr,
+    )
 except ImportError as e:
     raise SystemExit(
         f"Import adapter_gen from repo root (need geometry constants). {e}"
@@ -60,23 +64,6 @@ def _pad_label_j(i: int) -> str:
     return f"J{i + 1}"
 
 
-def _intersect_x_horizontal_with_segment(
-    y_h: float,
-    x0: float,
-    y0: float,
-    x1: float,
-    y1: float,
-) -> float | None:
-    """X where horizontal line y=y_h meets segment (x0,y0)-(x1,y1), or None."""
-    dy = y1 - y0
-    if abs(dy) < 1e-9:
-        return None
-    t = (y_h - y0) / dy
-    if t < -1e-6 or t > 1.0 + 1e-6:
-        return None
-    return x0 + t * (x1 - x0)
-
-
 def emit_svg(
     n: int,
     *,
@@ -93,45 +80,30 @@ def emit_svg(
     if n < 2:
         raise ValueError("columns must be >= 2")
 
-    # Stack edge vias / red traces below pad hole bottoms so horizontals don't cross holes.
-    trace_half = _TRACE_STROKE / 2.0
-    y_first_lane = y_pad + pad_r + trace_half + neck_clearance_mil
-    if y_min is None:
-        y_min_eff = y_first_lane
-    else:
-        y_min_eff = max(y_min, y_first_lane)
+    geom = compute_row_reverser_geometry_mil_standalone(
+        n,
+        pitch=pitch,
+        x_origin_left=0.0,
+        y_pad_row=y_pad,
+        edge_offset_mil=edge_offset,
+        pad_r=pad_r,
+        via_r=via_r,
+        trace_gap=trace_gap,
+        neck_clearance_mil=neck_clearance_mil,
+        trace_stroke=_TRACE_STROKE,
+        max_y_span=max_y_span,
+        y_min_floor=y_min,
+    )
+    if geom is None:
+        raise ValueError("columns must be >= 2")
 
     def x_pad(i: int) -> float:
         return (n - 1 - i) * pitch
 
     x_e = (n - 1) * pitch + edge_offset
-
-    def x_inner_horizontal_end(i: int) -> float | None:
-        if i == n - 1:
-            return None
-        j = n - 1 - i
-        assert j >= 1
-        return (x_pad(j - 1) + x_pad(j)) / 2
-
-    # Vertical lane spacing: tight default, or squeezed to max_y_span
-    if n <= 1:
-        dy = 0.0
-    elif max_y_span is not None:
-        dy = max_y_span / (n - 1)
-    else:
-        dy = 2.0 * via_r + trace_gap
+    dy = geom.lane_pitch_dy
+    y_min_eff = geom.y_first_lane
     y_max = y_min_eff + (n - 1) * dy
-
-    def y_v(i: int) -> float:
-        if n <= 1:
-            return y_min_eff
-        return y_min_eff + i * dy
-
-    def y_inner_terminal(i: int) -> float:
-        """Y for the gap (inner) end of layer B for column ``i`` (``i <= n-2``)."""
-        if i == n - 2:
-            return y_v(n - 1)
-        return y_v(i + 1)
 
     margin = 100.0
     w = x_e + via_r + margin + 120
@@ -168,50 +140,15 @@ def emit_svg(
         '  <g class="trace-red" aria-label="inner layer horizontals">',
     ]
 
-    # J6 cyan (second column from left): P_{n-2} -> V_{n-2} — shared horizontal stop for i <= n-3.
-    xa_j6, ya_j6 = x_pad(n - 2), y_pad
-    xb_j6, yb_j6 = x_e, y_v(n - 2)
-
-    for i in range(n):
-        x_end = x_inner_horizontal_end(i)
-        if x_end is None:
-            continue
-        y_e = y_v(i)
-        y_i = y_inner_terminal(i)
-        if i == n - 2:
-            lines.append(
-                f'    <polyline points="{x_e:.2f},{y_e:.2f} {x_end:.2f},{y_i:.2f}"/>'
-            )
-        elif abs(y_i - y_e) < 1e-9:
-            lines.append(
-                f'    <polyline points="{x_e:.2f},{y_e:.2f} {x_end:.2f},{y_e:.2f}"/>'
-            )
-        else:
-            xp = _intersect_x_horizontal_with_segment(
-                y_e, xa_j6, ya_j6, xb_j6, yb_j6
-            )
-            x_lo, x_hi = (x_end, x_e) if x_end < x_e else (x_e, x_end)
-            use_bend = xp is not None and x_lo - 1e-3 <= xp <= x_hi + 1e-3
-            if use_bend:
-                lines.append(
-                    f'    <polyline points="{x_e:.2f},{y_e:.2f} {xp:.2f},{y_e:.2f} '
-                    f'{x_end:.2f},{y_i:.2f}"/>'
-                )
-            else:
-                lines.append(
-                    f'    <polyline points="{x_e:.2f},{y_e:.2f} {x_end:.2f},{y_i:.2f}"/>'
-                )
+    for seg in geom.red:
+        lines.append(f'    <polyline points="{polyline_points_attr(seg)}"/>')
 
     lines.append("  </g>")
     lines.append('  <!-- Layer A: cyan diagonals -->')
     lines.append('  <g class="trace-cyan" aria-label="outer layer diagonals">')
 
-    for i in range(n):
-        xp = x_pad(i)
-        y = y_v(i)
-        lines.append(
-            f'    <polyline points="{xp:.2f},{y_pad:.2f} {x_e:.2f},{y:.2f}"/>'
-        )
+    for seg in geom.cyan:
+        lines.append(f'    <polyline points="{polyline_points_attr(seg)}"/>')
 
     lines.append("  </g>")
 
@@ -227,26 +164,18 @@ def emit_svg(
         )
     lines.append("  </g>")
 
-    vx = max(3.0, via_r * 0.45)
+    vx = geom.via_cross_arm
     lines.append('  <g aria-label="vias" stroke-linecap="round">')
-    for i in range(n):
-        ye = y_v(i)
-        inner_x = x_inner_horizontal_end(i)
-        if inner_x is None:
-            pts = ((x_e, ye),)
-        else:
-            yi = y_inner_terminal(i)
-            pts = ((x_e, ye), (inner_x, yi))
-        for x, y in pts:
-            lines.append(f'    <g transform="translate({x:.2f},{y:.2f})">')
-            lines.append(f'      <circle r="{via_r}" class="via"/>')
-            lines.append(
-                f'      <line x1="{-vx:.2f}" y1="0" x2="{vx:.2f}" y2="0" class="via-x"/>'
-            )
-            lines.append(
-                f'      <line x1="0" y1="{-vx:.2f}" x2="0" y2="{vx:.2f}" class="via-x"/>'
-            )
-            lines.append("    </g>")
+    for x, y in geom.vias:
+        lines.append(f'    <g transform="translate({x:.2f},{y:.2f})">')
+        lines.append(f'      <circle r="{via_r}" class="via"/>')
+        lines.append(
+            f'      <line x1="{-vx:.2f}" y1="0" x2="{vx:.2f}" y2="0" class="via-x"/>'
+        )
+        lines.append(
+            f'      <line x1="0" y1="{-vx:.2f}" x2="0" y2="{vx:.2f}" class="via-x"/>'
+        )
+        lines.append("    </g>")
     lines.append("  </g>")
 
     span_note = f"dy={dy:.1f} mil" + (
