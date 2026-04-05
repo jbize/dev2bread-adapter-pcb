@@ -1,10 +1,8 @@
 # ESP32 DevKit V1 — classic 30-pin breakout (2×15, 0.1″ pitch).
 # Typical ESP32-WROOM-32 module; micro-USB at bottom, EN/BOOT, CP2102, AMS1117-3.3.
 #
-# Pinout (silk left / right as viewed with USB toward you, module at top):
-#   Left (15):  EN, VP, VN, D34, D35, D32, D33, D25, D26, D27, D14, D12, D13, GND, VIN
-#   Right (15): D23, D22, TXO, RXO, D21, D19, D18, D5, TX2, RX2, D4, D2, D15, GND, 3V3
-# Adapter nets: 1–15 = left column top→bottom; 16–30 = right column top→bottom.
+# Net i (1..15) = J1 (left header, top→bottom); net i+15 (16..30) = J3 (right header, top→bottom),
+# board viewed with USB toward you and RF shield at top.
 
 schema = 1
 
@@ -12,15 +10,72 @@ id = "esp32-devkit-v1"
 title = "ESP32 DevKit V1 (30-pin)"
 description = "Two 15-pin headers (ESP32-WROOM-32 class DevKit V1); full breakout uses both rows."
 
-# All header pins on this PCB.
 device_min_pins = 30
-
-# T-adapter footprint: 30 pins (15 columns × 2 rows).
 adapter_pins = 30
 
-silk_profile = "generic"
+# Per-pin silk: run ./scripts/bake_devkitc_gpio_silk_paths.py --board esp32-devkit-v1
+# Preview/generator use [silk_bake].output when silk_profile is devkitc1 and --silk-labels devkitc1.
+silk_profile = "devkitc1"
+
+# Top Silk in the wide-head gap (same pattern as esp32-s3-devkitc-1). Use --no-branding to omit.
+[branding]
+text = "Godswind Consulting"
+image = "resources/images/godswind-east.jpeg"
+font_family = "DejaVu Serif"
+font_size = 96
+font_weight = "normal"
+font_style = "normal"
 
 [geometry]
 n_rows_top = 4
 n_rows_bottom = 4
 omit_row_b_gap_adjacent = true
+
+# Vendor labels → scripts/bake_devkitc_gpio_silk_paths.py → out/intermediate/silk/<output>
+[silk_bake]
+output = "esp32-devkit-v1_gpio_silk_paths.json"
+variant = "esp32-devkit-v1-wroom-30"
+source = "Common ESP32 DevKit V1 silk (2×15); align module per your PCB photo if needed."
+note = "Net i (1..15) = J1 pin i; net i+15 (16..30) = J3 pin i. J1 = left column, J3 = right, USB at bottom."
+
+j1_labels = [
+  "EN",
+  "VP",
+  "VN",
+  "D34",
+  "D35",
+  "D32",
+  "D33",
+  "D25",
+  "D26",
+  "D27",
+  "D14",
+  "D12",
+  "D13",
+  "GND",
+  "VIN",
+]
+j3_labels = [
+  "D23",
+  "D22",
+  "TXO",
+  "RXO",
+  "D21",
+  "D19",
+  "D18",
+  "D5",
+  "TX2",
+  "RX2",
+  "D4",
+  "D2",
+  "D15",
+  "GND",
+  "3V3",
+]
+
+[[silk_bake.board_id_lines]]
+text = "ESP32 DevKit V1"
+height = 5.5
+[[silk_bake.board_id_lines]]
+text = "30-pin · WROOM-32"
+height = 4.5

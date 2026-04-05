@@ -14,6 +14,34 @@ This repository holds the **EasyEDA Standard** generator, documentation, and **s
 
 Bake uses **`.venv`** automatically if system Python lacks **matplotlib**. Per-board vendor labels are defined under **`[silk_bake]`** in **`resources/boards/<name>.toml`** (`output`, `j1_labels`, `j3_labels`, …). Use **`--board NAME`** to bake one profile, **`--numeric-only`** for logical 1…N only.
 
+### ESP32 DevKit V1 (30-pin)
+
+Board profile: **`resources/boards/esp32-devkit-v1.toml`** (vendor pin names under **`[silk_bake]`**, optional **`[branding]`**). Run these from the repo root, in order:
+
+1. **Generate the silk label layers** — bakes GPIO text paths into **`out/intermediate/silk/`** (required before preview or PCB JSON with vendor labels):
+
+   ```bash
+   ./scripts/bake_devkitc_gpio_silk_paths.py --board esp32-devkit-v1
+   ```
+
+2. **Review the layout** — SVG with silk labels and branding from the TOML (output **`out/preview/esp32-devkit-v1.svg`**):
+
+   ```bash
+   ./scripts/preview_adapter_board.py --board esp32-devkit-v1 --silk auto
+   ```
+
+   Pass **`--no-branding`** if you want outline and silk only, without the **`[branding]`** image and text.
+
+3. **Generate the EasyEDA board** — Standard JSON with copper, silk labels, and branding (default is to include branding; use **`--no-branding`** to omit):
+
+   ```bash
+   ./scripts/generate_easyeda_adapter_pcb.py --board esp32-devkit-v1 --silk-labels devkitc1
+   ```
+
+   Typical output: **`out/easyeda/esp32-devkit-v1.devkitc1.standard.json`**. Import that file in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**.
+
+Ensure **`[branding].image`** in the TOML points at a real file under **`resources/images/`** if you expect the bitmap on the board and in previews.
+
 Scripts are executable and use `#!/usr/bin/env python3`. Import `out/easyeda/<board>.*.standard.json` (e.g. `esp32-s3-devkitc-1.devkitc1.standard.json`) in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab. Omit **`--board`** to keep the legacy default filenames (`easyeda-adapter-44pin-dev2bread.*`).
 
 Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)** (includes a short **SVG preview** subsection). For **AI / handoff / picking up later** (terminology, silk modes, TOML vs silk vs copper, which `.py` files are new vs legacy, pitfalls): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)** — start with **“Picking up later (resume checklist)”** there.
