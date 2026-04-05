@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  7-wide bus reversal (two layers + vias). Former 8th trace (rightmost) removed.
+  Cyan: outer layer - vertical in, sloped legs to right-hand via column, vertical out.
+  Red: inner layer - horizontals only between the two via sets.
+  Green: plated through-holes (vias).
+  Geometry: pitch g=48 (matches adapter HEAD top row 0..288), right via column x=316 (28 from J29 center x=288 = one pinhole diameter, r=14); vertical spacing tuned to R4.
+  Top entry: pads at bend. Left to right: J23..J29 (same x grid as adapter-14pin-concept-r4.svg head-top).
+  Strap row y=168: matches vertical distance R4 head-top pin row (y=0) to strap pads (y=196-28=168).
+  Scale: 6x vs former g=8 diagram so pin row width matches adapter (48 unit pitch).
+  Vertical: prior squeeze then y * (168/324) so pin-to-strap gap matches adapter-14pin-concept-r4.svg.
+  Line weights, pad radii, and via size match adapter-14pin-concept-r4.svg (.net-top, .pad, .pad-small).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -84 528 298.667" font-family="system-ui, Segoe UI, sans-serif" font-size="11">
+  <title>7-lane bus reversal (two-layer reference)</title>
+  <defs>
+    <style type="text/css"><![CDATA[
+      .grid { stroke: #333; stroke-width: 0.35; }
+      .trace-cyan { fill: none; stroke: #6cf; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.95; }
+      .trace-red-inner { fill: none; stroke: #e33; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.95; }
+      .via { fill: #284; stroke: #8f8; stroke-width: 1; }
+      .via-x { stroke: #efe; stroke-width: 0.9; }
+      .lbl { fill: #888; font-size: 10px; }
+      .pad-top { fill: #444; stroke: #888; stroke-width: 1; }
+      .pad-bottom { fill: #383838; stroke: #777; stroke-width: 1; }
+      .label-head { fill: #9cf; font-size: 10px; font-weight: 500; }
+      .label-strap { fill: #9cf; font-size: 8px; font-weight: 500; }
+    ]]></style>
+    <pattern id="grid48x18p67" width="48" height="18.667" patternUnits="userSpaceOnUse">
+      <path class="grid" d="M 48 0 L 0 0 0 18.667"/>
+    </pattern>
+  </defs>
+  <rect x="-72" y="-84" width="528" height="298.667" fill="#0a0a0a"/>
+  <rect x="-72" y="-84" width="528" height="298.667" fill="url(#grid48x18p67)"/>
+
+  <!-- Layer 2: red horizontals (inner layer, drawn first) -->
+  <g class="trace-red-inner" aria-label="inner layer horizontals">
+    <polyline points="316,149.333 288,149.333"/>
+    <polyline points="316,130.667 240,130.667"/>
+    <polyline points="316,112 192,112"/>
+    <polyline points="316,93.333 144,93.333"/>
+    <polyline points="316,74.667 96,74.667"/>
+    <polyline points="316,56 48,56"/>
+    <polyline points="316,37.333 0,37.333"/>
+  </g>
+
+  <!-- Layer 1: cyan - from bend to column via; exit via to strap pads (y=168) -->
+  <g class="trace-cyan" aria-label="top/bottom copper">
+    <polyline points="0,0 316,149.333"/>
+    <polyline points="288,149.333 288,168"/>
+    <polyline points="48,0 316,130.667"/>
+    <polyline points="240,130.667 240,168"/>
+    <polyline points="96,0 316,112"/>
+    <polyline points="192,112 192,168"/>
+    <polyline points="144,0 316,93.333"/>
+    <polyline points="144,93.333 144,168"/>
+    <polyline points="192,0 316,74.667"/>
+    <polyline points="96,74.667 96,168"/>
+    <polyline points="240,0 316,56"/>
+    <polyline points="48,56 48,168"/>
+    <polyline points="288,0 316,37.333"/>
+    <polyline points="0,37.333 0,168"/>
+  </g>
+
+  <!-- Pads at bend: J23..J29 left to right (same x grid as adapter HEAD top row) -->
+  <g id="pads-top" aria-label="pads at bend J23-J29">
+    <circle cx="0" cy="0" r="14" class="pad-top"/>
+    <circle cx="48" cy="0" r="14" class="pad-top"/>
+    <circle cx="96" cy="0" r="14" class="pad-top"/>
+    <circle cx="144" cy="0" r="14" class="pad-top"/>
+    <circle cx="192" cy="0" r="14" class="pad-top"/>
+    <circle cx="240" cy="0" r="14" class="pad-top"/>
+    <circle cx="288" cy="0" r="14" class="pad-top"/>
+    <text x="0" y="2.333" text-anchor="middle" class="label-head">J23</text>
+    <text x="48" y="2.333" text-anchor="middle" class="label-head">J24</text>
+    <text x="96" y="2.333" text-anchor="middle" class="label-head">J25</text>
+    <text x="144" y="2.333" text-anchor="middle" class="label-head">J26</text>
+    <text x="192" y="2.333" text-anchor="middle" class="label-head">J27</text>
+    <text x="240" y="2.333" text-anchor="middle" class="label-head">J28</text>
+    <text x="288" y="2.333" text-anchor="middle" class="label-head">J29</text>
+  </g>
+
+  <!-- Vias: right column + diagonal exit line (14 total) -->
+  <g aria-label="vias" stroke-linecap="round">
+    <g transform="translate(316,149.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,130.667)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,112)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,93.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,74.667)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,56)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(316,37.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(288,149.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(240,130.667)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(192,112)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(144,93.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(96,74.667)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(48,56)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+    <g transform="translate(0,37.333)"><circle r="3.5" class="via"/><line x1="-4" y1="0" x2="4" y2="0" class="via-x"/><line x1="0" y1="-4" x2="0" y2="4" class="via-x"/></g>
+  </g>
+
+  <!-- Strap landing pads (centers on y=168; matches R4 head-bottom strap row) -->
+  <g id="pads-strap" aria-label="strap row pads J29-J23">
+    <circle cx="0" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="48" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="96" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="144" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="192" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="240" cy="168" r="7" class="pad-bottom"/>
+    <circle cx="288" cy="168" r="7" class="pad-bottom"/>
+    <text x="0" y="176.556" text-anchor="middle" class="label-strap">J29</text>
+    <text x="48" y="176.556" text-anchor="middle" class="label-strap">J28</text>
+    <text x="96" y="176.556" text-anchor="middle" class="label-strap">J27</text>
+    <text x="144" y="176.556" text-anchor="middle" class="label-strap">J26</text>
+    <text x="192" y="176.556" text-anchor="middle" class="label-strap">J25</text>
+    <text x="240" y="176.556" text-anchor="middle" class="label-strap">J24</text>
+    <text x="288" y="176.556" text-anchor="middle" class="label-strap">J23</text>
+  </g>
+
+  <text x="192" y="-60.667" text-anchor="middle" class="lbl">7-lane reversal (cyan / red / vias)</text>
+</svg>

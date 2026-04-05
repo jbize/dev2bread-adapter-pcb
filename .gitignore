@@ -3,3 +3,16 @@
 .cache/
 chat-history/
 out/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tests / coverage (if added later)
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store

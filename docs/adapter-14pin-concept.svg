@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  14-pin concept: HEAD J1-J7 to STEM left column; diagonal head/neck to lanes (saved step 2 baseline).
+  Outline stem top y=300; first stem pad row y=316. Conceptual nets only.
+  Strap / J23-J29 routing concepts: adapter-14pin-concept-r4.svg (working), adapter-14pin-concept-r3-top-row-reference.svg (frozen R3)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 780" font-family="system-ui, Segoe UI, sans-serif" font-size="11">
+  <title>14-pin concept - J1-J7 head to stem (diagonal neck)</title>
+  <defs>
+    <style type="text/css"><![CDATA[
+      .outline { fill: none; stroke: #c0c; stroke-width: 3; stroke-linejoin: round; }
+      .pad { fill: #444; stroke: #888; stroke-width: 1; }
+      .label { fill: #ddd; font-size: 10px; }
+      .title { fill: #eee; font-size: 14px; font-weight: 600; }
+      .note { fill: #aaa; font-size: 9px; }
+      .net { fill: none; stroke: #e44; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.9; }
+    ]]></style>
+  </defs>
+
+  <rect x="0" y="0" width="560" height="780" fill="#1a1a1a"/>
+
+  <text x="280" y="28" text-anchor="middle" class="title">14-pin concept - J1-J7 (head) to J1-J7 (stem)</text>
+  <text x="280" y="46" text-anchor="middle" class="note">Diagonal pad to lane in neck; conceptual nets only.</text>
+
+  <g transform="translate(88, 80)">
+    <path class="outline" d="M -24,0 L 336,0 L 336,300 L 216,300 L 216,636 L 104,636 L 104,300 L -24,300 Z"/>
+
+    <g id="nets" class="net">
+      <polyline points="0,196 120,284 120,316 104,316"/>
+      <polyline points="48,196 131,276 131,364 104,364"/>
+      <polyline points="96,196 142,258 142,412 104,412"/>
+      <polyline points="144,196 153,248 153,460 104,460"/>
+      <polyline points="192,196 164,258 164,508 104,508"/>
+      <polyline points="240,196 175,276 175,556 104,556"/>
+      <polyline points="288,196 186,284 186,604 104,604"/>
+    </g>
+
+    <g id="head-top">
+      <text x="156" y="-12" text-anchor="middle" class="label" fill="#9cf">HEAD - top row (J23-J29)</text>
+      <circle cx="0" cy="0" r="14" class="pad"/>
+      <circle cx="48" cy="0" r="14" class="pad"/>
+      <circle cx="96" cy="0" r="14" class="pad"/>
+      <circle cx="144" cy="0" r="14" class="pad"/>
+      <circle cx="192" cy="0" r="14" class="pad"/>
+      <circle cx="240" cy="0" r="14" class="pad"/>
+      <circle cx="288" cy="0" r="14" class="pad"/>
+      <text x="0" y="4" text-anchor="middle" class="label" fill="#9cf">J23</text>
+      <text x="48" y="4" text-anchor="middle" class="label" fill="#9cf">J24</text>
+      <text x="96" y="4" text-anchor="middle" class="label" fill="#9cf">J25</text>
+      <text x="144" y="4" text-anchor="middle" class="label" fill="#9cf">J26</text>
+      <text x="192" y="4" text-anchor="middle" class="label" fill="#9cf">J27</text>
+      <text x="240" y="4" text-anchor="middle" class="label" fill="#9cf">J28</text>
+      <text x="288" y="4" text-anchor="middle" class="label" fill="#9cf">J29</text>
+    </g>
+
+    <g id="head-bottom" transform="translate(0,196)">
+      <text x="156" y="-8" text-anchor="middle" class="label" fill="#f88">HEAD - bottom row (J1-J7)</text>
+      <circle cx="0" cy="0" r="14" class="pad"/>
+      <circle cx="48" cy="0" r="14" class="pad"/>
+      <circle cx="96" cy="0" r="14" class="pad"/>
+      <circle cx="144" cy="0" r="14" class="pad"/>
+      <circle cx="192" cy="0" r="14" class="pad"/>
+      <circle cx="240" cy="0" r="14" class="pad"/>
+      <circle cx="288" cy="0" r="14" class="pad"/>
+      <text x="0" y="4" text-anchor="middle" class="label" fill="#f88">J1</text>
+      <text x="48" y="4" text-anchor="middle" class="label" fill="#f88">J2</text>
+      <text x="96" y="4" text-anchor="middle" class="label" fill="#f88">J3</text>
+      <text x="144" y="4" text-anchor="middle" class="label" fill="#f88">J4</text>
+      <text x="192" y="4" text-anchor="middle" class="label" fill="#f88">J5</text>
+      <text x="240" y="4" text-anchor="middle" class="label" fill="#f88">J6</text>
+      <text x="288" y="4" text-anchor="middle" class="label" fill="#f88">J7</text>
+    </g>
+
+    <text x="156" y="308" text-anchor="middle" class="note">neck</text>
+
+    <g id="stem" transform="translate(104, 316)">
+      <text x="56" y="-14" text-anchor="middle" class="label" fill="#8f8">STEM - mate to breadboard (J1-J7 / J23-J29)</text>
+      <circle cx="0" cy="0" r="14" class="pad"/>
+      <circle cx="0" cy="48" r="14" class="pad"/>
+      <circle cx="0" cy="96" r="14" class="pad"/>
+      <circle cx="0" cy="144" r="14" class="pad"/>
+      <circle cx="0" cy="192" r="14" class="pad"/>
+      <circle cx="0" cy="240" r="14" class="pad"/>
+      <circle cx="0" cy="288" r="14" class="pad"/>
+      <circle cx="112" cy="0" r="14" class="pad"/>
+      <circle cx="112" cy="48" r="14" class="pad"/>
+      <circle cx="112" cy="96" r="14" class="pad"/>
+      <circle cx="112" cy="144" r="14" class="pad"/>
+      <circle cx="112" cy="192" r="14" class="pad"/>
+      <circle cx="112" cy="240" r="14" class="pad"/>
+      <circle cx="112" cy="288" r="14" class="pad"/>
+
+      <text x="-28" y="8" class="label" fill="#f88">J1</text>
+      <text x="-28" y="56" class="label" fill="#f88">J2</text>
+      <text x="-28" y="104" class="label" fill="#f88">J3</text>
+      <text x="-28" y="152" class="label" fill="#f88">J4</text>
+      <text x="-28" y="200" class="label" fill="#f88">J5</text>
+      <text x="-28" y="248" class="label" fill="#f88">J6</text>
+      <text x="-28" y="296" class="label" fill="#f88">J7</text>
+
+      <text x="140" y="8" class="label" fill="#9cf">J23</text>
+      <text x="140" y="56" class="label" fill="#9cf">J24</text>
+      <text x="140" y="104" class="label" fill="#9cf">J25</text>
+      <text x="140" y="152" class="label" fill="#9cf">J26</text>
+      <text x="140" y="200" class="label" fill="#9cf">J27</text>
+      <text x="140" y="248" class="label" fill="#9cf">J28</text>
+      <text x="140" y="296" class="label" fill="#9cf">J29</text>
+    </g>
+
+    <line x1="0" y1="-28" x2="0" y2="636" stroke="#555" stroke-dasharray="4 4"/>
+    <line x1="288" y1="-28" x2="288" y2="300" stroke="#555" stroke-dasharray="4 4"/>
+    <line x1="104" y1="308" x2="104" y2="636" stroke="#555" stroke-dasharray="4 4"/>
+    <line x1="216" y1="308" x2="216" y2="636" stroke="#555" stroke-dasharray="4 4"/>
+  </g>
+
+  <text x="280" y="748" text-anchor="middle" class="note">Stem outline runs past the last row so J7 and J29 sit inside the board edge.</text>
+</svg>
