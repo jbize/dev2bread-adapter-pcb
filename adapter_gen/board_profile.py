@@ -38,6 +38,7 @@ class BoardProfile:
     adapter_pins: int
     n_rows_top: int
     n_rows_bottom: int
+    omit_row_b_gap_adjacent: bool
     silk_profile: str | None
     branding: BoardBranding | None
     source_path: Path | None
@@ -116,6 +117,7 @@ def load_board_profile(path: Path) -> BoardProfile:
         adapter_pins=int(data["adapter_pins"]),
         n_rows_top=int(geom.get("n_rows_top", data.get("n_rows_top", 4))),
         n_rows_bottom=int(geom.get("n_rows_bottom", data.get("n_rows_bottom", 4))),
+        omit_row_b_gap_adjacent=bool(geom.get("omit_row_b_gap_adjacent", False)),
         silk_profile=data.get("silk_profile"),
         branding=branding,
         source_path=path.resolve(),
@@ -128,6 +130,7 @@ def resolve_board_params(
     pins: int | None,
     rows_top: int | None,
     rows_bottom: int | None,
+    omit_row_b_gap_adjacent: bool | None = None,
 ) -> BoardParams:
     """Merge CLI overrides onto profile; or use explicit pins if no profile."""
     if profile is None:
@@ -136,11 +139,22 @@ def resolve_board_params(
         n = pins
         rt = rows_top if rows_top is not None else 4
         rb = rows_bottom if rows_bottom is not None else 4
+        o = False if omit_row_b_gap_adjacent is None else omit_row_b_gap_adjacent
     else:
         n = profile.adapter_pins if pins is None else pins
         rt = profile.n_rows_top if rows_top is None else rows_top
         rb = profile.n_rows_bottom if rows_bottom is None else rows_bottom
-    return BoardParams(n_pins=n, n_rows_top=rt, n_rows_bottom=rb)
+        o = (
+            profile.omit_row_b_gap_adjacent
+            if omit_row_b_gap_adjacent is None
+            else omit_row_b_gap_adjacent
+        )
+    return BoardParams(
+        n_pins=n,
+        n_rows_top=rt,
+        n_rows_bottom=rb,
+        omit_row_b_gap_adjacent=o,
+    )
 
 
 def boards_dir(repo_root: Path) -> Path:

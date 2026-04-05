@@ -91,7 +91,9 @@ OUTLINE_STROKE = 5
 ROUTE_JOG_MIL = 40
 
 # Full 44-pin / 4-deep layout for ``build_legacy_expanded`` until that path is removed.
-_LEGACY_BP = BoardParams(n_pins=44, n_rows_top=4, n_rows_bottom=4)
+_LEGACY_BP = BoardParams(
+    n_pins=44, n_rows_top=4, n_rows_bottom=4, omit_row_b_gap_adjacent=False
+)
 
 
 def mil_to_u(m: float) -> float:
@@ -963,6 +965,21 @@ def main() -> None:
         metavar="N",
         help="Override: socket depth rows from row B (1..4).",
     )
+    og = p.add_mutually_exclusive_group()
+    og.add_argument(
+        "--omit-row-b-gap-adjacent",
+        dest="omit_row_b_gap_adjacent",
+        action="store_true",
+        default=None,
+        help="Omit gap-adjacent row-B socket row (room for row-A reverser). Default: profile / off.",
+    )
+    og.add_argument(
+        "--no-omit-row-b-gap-adjacent",
+        dest="omit_row_b_gap_adjacent",
+        action="store_false",
+        default=None,
+        help="Place pads on all row-B socket rows.",
+    )
     p.add_argument(
         "-o",
         "--output",
@@ -1031,6 +1048,7 @@ def main() -> None:
             pins=pins_eff,
             rows_top=args.rows_top,
             rows_bottom=args.rows_bottom,
+            omit_row_b_gap_adjacent=args.omit_row_b_gap_adjacent,
         )
     else:
         bp = resolve_board_params(
@@ -1038,6 +1056,7 @@ def main() -> None:
             pins=args.pins,
             rows_top=args.rows_top,
             rows_bottom=args.rows_bottom,
+            omit_row_b_gap_adjacent=args.omit_row_b_gap_adjacent,
         )
 
     if args.all_variants:

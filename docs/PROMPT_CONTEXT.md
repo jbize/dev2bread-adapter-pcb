@@ -99,6 +99,8 @@ Use this when you have not touched the repo for a while or a new session needs f
 
 Default output paths use the board name (`out/easyeda/esp32-s3-devkitc-1.devkitc1.standard.json`, `out/preview/esp32-s3-devkitc-1.svg`). Pass **`-o` / `--output`** to override. Without **`--board`**, EasyEDA keeps the legacy basename `easyeda-adapter-44pin-dev2bread.*`.
 
+Preview **silks** (`--silk devkitc1`, `numeric`, `auto`) and **branding** (`--no-branding` to omit): command table in **[README.md](../README.md)** (**SVG preview** section).
+
 **Why (re)create a venv?** Usually you do not need to — keep **`.venv/`** in the repo (gitignored) and reuse it. Recreate if you switch Python major versions, the env breaks, you clone on a new machine, or you want a clean install of dependencies (e.g. after pinning versions).
 
 **`out/`** is gitignored — regenerate locally after clone.

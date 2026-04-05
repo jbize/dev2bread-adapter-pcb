@@ -19,3 +19,4 @@ silk_profile = "generic"
 [geometry]
 n_rows_top = 4
 n_rows_bottom = 4
+omit_row_b_gap_adjacent = true

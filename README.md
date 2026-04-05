@@ -14,7 +14,7 @@ This repository holds the **EasyEDA Standard** generator, documentation, and **s
 
 Scripts are executable and use `#!/usr/bin/env python3`. Import `out/easyeda/<board>.*.standard.json` (e.g. `esp32-s3-devkitc-1.devkitc1.standard.json`) in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab. Omit **`--board`** to keep the legacy default filenames (`easyeda-adapter-44pin-dev2bread.*`).
 
-Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**. For **AI / handoff / picking up later** (terminology, silk modes, TOML vs silk vs copper, which `.py` files are new vs legacy, pitfalls): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)** — start with **“Picking up later (resume checklist)”** there.
+Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)** (includes a short **SVG preview** subsection). For **AI / handoff / picking up later** (terminology, silk modes, TOML vs silk vs copper, which `.py` files are new vs legacy, pitfalls): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)** — start with **“Picking up later (resume checklist)”** there.
 
 **`resources/images/`** holds reference photos (e.g. DevKit module, **breadboard misfitment**). Optional **silk artwork** for bitmap branding in EasyEDA can live there too.
 
@@ -24,3 +24,18 @@ Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)**.
 |--------|---------|
 | `scripts/generate_easyeda_adapter_pcb.py` | Emit EasyEDA Standard PCB JSON (copper, outline, silk). |
 | `scripts/bake_devkitc_gpio_silk_paths.py` | Regenerate silk path JSON (needs Python venv + **matplotlib**). |
+| `scripts/preview_adapter_board.py` | Board outline, holes, optional silk overlay, optional branding (SVG). |
+
+### SVG preview (`preview_adapter_board.py`)
+
+Run from the repo root. Silk JSON must exist under **`out/intermediate/silk/`** (run **`scripts/bake_devkitc_gpio_silk_paths.py`** once first). Branding uses the board TOML **`[branding]`** block and needs **matplotlib** (the script may use **`.venv`** automatically, same idea as the bake script). Omit **`--no-branding`** to include branding.
+
+| What you want | Command |
+|-----------------|---------|
+| **DevKitC-style GPIO silk** + branding (profile default) | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk auto` or `--silk devkitc1` |
+| **Numeric 1…N** silk + branding (generic indices, not vendor GPIO names) | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk numeric` |
+| **Silk profile from TOML only** | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk auto` — uses **`silk_profile`** in **`resources/boards/<name>.toml`** (`devkitc1` → devkitc GPIO paths; **`generic`** / **`numeric`** in TOML map to the numeric silk JSON). To force numeric labels while keeping a **`devkitc1`** profile in the file, pass **`--silk numeric`** explicitly. |
+
+Default output path: **`out/preview/<board>.svg`** (override with **`-o`**). Use **`--no-branding`** to omit **`[branding]`** even when it is defined in the profile.
+
+See also **`scripts/preview_adapter_board.py`** module docstring and **`--help`**.

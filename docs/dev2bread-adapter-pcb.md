@@ -78,6 +78,19 @@ In **EasyEDA Pro**, use the JSON **only** to **import** the design, run the **ch
 |--------|------|
 | **`scripts/generate_easyeda_adapter_pcb.py`** | Builds the **EasyEDA Standard** PCB JSON (copper, outline, silk). Run this whenever you change geometry or silk mode. |
 | **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`out/intermediate/silk/*.json`** (needs a **venv** + **matplotlib**). Re-run when fonts or label tables change. |
+| **`scripts/preview_adapter_board.py`** | **SVG preview** only (outline, holes, optional silk vectors, optional branding). Same baked silk JSON as the generator; branding needs matplotlib. |
+
+### SVG preview (silks and branding)
+
+Use **`./scripts/preview_adapter_board.py`** from the repo root. Bake silk first (**`scripts/bake_devkitc_gpio_silk_paths.py`**). Branding comes from the board TOML **`[branding]`** block unless you pass **`--no-branding`**.
+
+Examples for **`--board esp32-s3-devkitc-1`**:
+
+- **DevKitC GPIO silk + branding:** `--silk auto` (follows **`silk_profile`** in the TOML, here **`devkitc1`**) or **`--silk devkitc1`** explicitly.
+- **Numeric 1…N silk + branding (generic indices):** **`--silk numeric`**.
+- **`--silk auto`** with **`silk_profile = generic`** or **`numeric`** in the TOML also selects the numeric silk JSON; if the profile says **`devkitc1`** but you want numeric labels, pass **`--silk numeric`** explicitly.
+
+Default SVG path: **`out/preview/<board>.svg`**. A fuller command table lives in the repository **[README.md](../README.md)** under **SVG preview**.
 
 ### EasyEDA files (default names)
 

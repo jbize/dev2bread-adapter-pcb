@@ -31,3 +31,5 @@ font_style = "normal"
 [geometry]
 n_rows_top = 4
 n_rows_bottom = 4
+# Drop the row-B row nearest the gap (row-A reverser / vias need clearance).
+omit_row_b_gap_adjacent = true

@@ -43,14 +43,21 @@ class BoardParams:
 
     n_pins: int
     n_rows_top: int  # 1..4: socket depth from row A toward gap
-    # 1..4: socket depth from row B toward gap
+    # 1..4: socket depth from row B toward stem (before optional omit)
     n_rows_bottom: int
+    # When True, do not place pads on row B's gap-adjacent row (innermost toward row A).
+    omit_row_b_gap_adjacent: bool = False
 
     def __post_init__(self) -> None:
         if self.n_pins % 2 != 0 or not (14 <= self.n_pins <= 44):
             raise ValueError("n_pins must be even and in [14, 44]")
         if not (1 <= self.n_rows_top <= 4) or not (1 <= self.n_rows_bottom <= 4):
             raise ValueError("n_rows_top and n_rows_bottom must be in 1..4")
+        if self.omit_row_b_gap_adjacent and self.n_rows_bottom < 2:
+            raise ValueError(
+                "omit_row_b_gap_adjacent requires n_rows_bottom >= 2 "
+                "(at least one row-B socket row must remain)"
+            )
 
     @property
     def num_cols(self) -> int:
@@ -98,7 +105,11 @@ def wide_head_y_rows_mil(*, p: BoardParams, from_row_a: bool) -> list[float]:
     n = p.n_rows_top if from_row_a else p.n_rows_bottom
     if from_row_a:
         return [Y_W_ROW_A + k * PITCH for k in range(n)]
-    return [p.y_row_b - k * PITCH for k in range(n)]
+    # k=0: stem-side row B; k=n-1: gap-adjacent (innermost toward row A / reverser).
+    raw = [p.y_row_b - k * PITCH for k in range(n)]
+    if p.omit_row_b_gap_adjacent and len(raw) > 1:
+        return raw[:-1]
+    return raw
 
 
 def header_branding_region_mil(p: BoardParams) -> tuple[float, float, float, float]:
