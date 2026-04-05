@@ -99,6 +99,33 @@ def wide_head_y_rows_mil(*, p: BoardParams, from_row_a: bool) -> list[float]:
     return [p.y_row_b - k * PITCH for k in range(n)]
 
 
+def header_branding_region_mil(p: BoardParams) -> tuple[float, float, float, float]:
+    """Blank strip between innermost wide-head rows (mil): ``(left, top, width, height)``.
+
+    Innermost rows are the socket rows closest to the gap between J1-side and J3-side
+    blocks (+Y down). The rectangle is inset from pad centers by ``PAD_SIZE/2``.
+    """
+    ys_a = wide_head_y_rows_mil(p=p, from_row_a=True)
+    ys_b = wide_head_y_rows_mil(p=p, from_row_a=False)
+    y_inner_a = ys_a[-1]
+    y_inner_b = ys_b[-1]
+    pad_half = PAD_SIZE / 2.0
+    top = y_inner_a + pad_half
+    bottom = y_inner_b - pad_half
+    if bottom <= top + 1e-6:
+        y_mid = 0.5 * (y_inner_a + y_inner_b)
+        top = y_mid - 50.0
+        bottom = y_mid + 50.0
+    height = bottom - top
+
+    xs = [head_column_x_mil(i, p) for i in range(p.num_cols)]
+    x_min = min(xs) - pad_half
+    x_max = max(xs) + pad_half
+    width = x_max - x_min
+    left = x_min
+    return (left, top, width, height)
+
+
 def board_outline_polygon_mil(p: BoardParams) -> list[Point2]:
     """Closed T outline (CCW), sharp corners — same vertices as legacy."""
     _, x_ln, x_rn, y_stem_top = stem_layout_mil(p)

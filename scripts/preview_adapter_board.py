@@ -15,10 +15,14 @@ the board profile's ``silk_profile`` when present.
 
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk devkitc1
 
+Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb.py`` emits
+(same geometry; branding needs matplotlib, auto re-exec with ``.venv`` like the bake script).
+
 **Board profile (TOML)** — default ``-o`` is ``out/preview/<board>.svg``::
 
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1
   ./scripts/preview_adapter_board.py --profile resources/boards/example-14pin-7-per-row.toml
+  ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --no-branding
 
 Run from repo root (or set PYTHONPATH).
 """
@@ -134,6 +138,11 @@ def main() -> None:
         help="Directory with devkitc1_gpio_silk_paths.json / numeric_silk_paths.json "
         "(default: out/intermediate/silk under repo root).",
     )
+    p.add_argument(
+        "--no-branding",
+        action="store_true",
+        help="Omit optional board branding from TOML ([branding] text / image), even if defined.",
+    )
     args = p.parse_args()
     profile = None
     if args.profile is not None:
@@ -176,11 +185,20 @@ def main() -> None:
     else:
         silk_dir = silk_dir.resolve()
 
+    branding = None
+    if (
+        profile is not None
+        and profile.branding is not None
+        and not args.no_branding
+    ):
+        branding = profile.branding
+
     emit_board_svg(
         bp,
         out,
         silk_mode=None if silk_mode == "none" else silk_mode,
         silk_dir=silk_dir,
+        branding=branding,
     )
     print(out.resolve())
 

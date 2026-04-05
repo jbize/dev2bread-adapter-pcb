@@ -16,6 +16,18 @@ adapter_pins = 44
 # Future: silk stroke labels — "generic" (1…N) or board-specific bake key.
 silk_profile = "devkitc1"
 
+# Optional Top Silk branding in the wide-head center gap (between J1/J3 rows).
+# Paths are relative to the repository root unless absolute. Use --no-branding to omit.
+# The [branding] header must be present — do not comment it out while leaving text/image below.
+[branding]
+text = "Godswind Consulting"
+image = "resources/images/godswind-east.jpeg"
+# font_size = matplotlib outline quality only; text is scaled to fill the branding text box.
+font_family = "DejaVu Serif"
+font_size = 96
+font_weight = "normal"
+font_style = "normal"
+
 [geometry]
 n_rows_top = 4
 n_rows_bottom = 4

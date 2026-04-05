@@ -14,57 +14,16 @@ Writes (under repo `out/intermediate/silk/`; gitignored — run before board gen
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_REEXEC_ENV = "_DEV2BREAD_SILK_BAKE_REEXEC"
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
+from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
 
-def _venv_python(repo: Path) -> Path | None:
-    if sys.platform == "win32":
-        cand = repo / ".venv" / "Scripts" / "python.exe"
-    else:
-        cand = repo / ".venv" / "bin" / "python"
-    return cand if cand.is_file() else None
-
-
-def _print_matplotlib_help() -> None:
-    print(
-        "bake_devkitc_gpio_silk_paths.py requires the third-party package 'matplotlib'\n"
-        "  (vector text → paths for EasyEDA silk).\n\n"
-        "Install it in a project virtualenv (from the repo root):\n"
-        "  python3 -m venv .venv && .venv/bin/pip install matplotlib\n\n"
-        "Then run this script again. If .venv exists, it is used automatically when\n"
-        "  system Python does not have matplotlib.\n",
-        file=sys.stderr,
-    )
-
-
-def _ensure_matplotlib() -> None:
-    try:
-        import matplotlib  # noqa: F401
-    except ImportError:
-        pass
-    else:
-        return
-
-    if os.environ.get(_REEXEC_ENV):
-        _print_matplotlib_help()
-        raise SystemExit(1)
-
-    vpy = _venv_python(_REPO_ROOT)
-    if vpy is not None:
-        env = {**os.environ, _REEXEC_ENV: "1"}
-        script = Path(__file__).resolve()
-        os.execve(str(vpy), [str(vpy), str(script)] + sys.argv[1:], env)
-
-    _print_matplotlib_help()
-    raise SystemExit(1)
-
-
-_ensure_matplotlib()
+ensure_matplotlib()
 
 from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MPath

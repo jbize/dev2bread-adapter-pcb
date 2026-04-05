@@ -6,11 +6,25 @@ Requires Python 3.11+ (``tomllib``).
 
 from __future__ import annotations
 
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 from adapter_gen.geometry import BoardParams
+
+
+@dataclass(frozen=True)
+class BoardBranding:
+    """Optional Top Silk branding in the gap between innermost header rows (see ``branding.py``)."""
+
+    text: str | None
+    image_path: Path | None
+    # Matplotlib ``FontProperties`` (glyph outline before fit-to-region scaling).
+    font_family: str = "Segoe Script"
+    font_size_pt: float = 96.0
+    font_weight: str = "bold"
+    font_style: str = "italic"
 
 
 @dataclass(frozen=True)
@@ -25,7 +39,32 @@ class BoardProfile:
     n_rows_top: int
     n_rows_bottom: int
     silk_profile: str | None
+    branding: BoardBranding | None
     source_path: Path | None
+
+
+def _repo_root_from_board_profile(path: Path) -> Path:
+    """``resources/boards/<name>.toml`` → repository root."""
+    return path.resolve().parent.parent.parent
+
+
+def _branding_font_fields(br: dict) -> tuple[str, float, str, str]:
+    """Parse ``font_*`` from ``[branding]`` (defaults: script-like bold italic)."""
+    raw_fam = br.get("font_family")
+    if raw_fam is not None and str(raw_fam).strip():
+        family = str(raw_fam).strip()
+    else:
+        family = "Segoe Script"
+    raw_sz = br.get("font_size", 96.0)
+    try:
+        font_size_pt = float(raw_sz)
+    except (TypeError, ValueError):
+        font_size_pt = 96.0
+    raw_w = br.get("font_weight", "bold")
+    weight = str(raw_w).strip().lower() if raw_w is not None else "bold"
+    raw_s = br.get("font_style", "italic")
+    style = str(raw_s).strip().lower() if raw_s is not None else "italic"
+    return family, font_size_pt, weight, style
 
 
 def load_board_profile(path: Path) -> BoardProfile:
@@ -35,6 +74,40 @@ def load_board_profile(path: Path) -> BoardProfile:
         raise ValueError(f"{path}: expected schema = 1")
 
     geom = data.get("geometry") or {}
+    branding: BoardBranding | None = None
+    br = data.get("branding")
+    if not isinstance(br, dict) and (
+        data.get("text") is not None or data.get("image") is not None
+    ):
+        print(
+            f"Warning: {path}: `text` / `image` must live under a `[branding]` table "
+            "(uncomment the `[branding]` line). Using them as branding for this load.",
+            file=sys.stderr,
+        )
+        br = {"text": data.get("text"), "image": data.get("image")}
+    if isinstance(br, dict):
+        txt = br.get("text")
+        text = str(txt).strip() if txt is not None else None
+        if text == "":
+            text = None
+        img_raw = br.get("image")
+        img_path: Path | None = None
+        if img_raw is not None and str(img_raw).strip() != "":
+            raw = str(img_raw).strip()
+            pimg = Path(raw)
+            repo = _repo_root_from_board_profile(path)
+            img_path = pimg.resolve() if pimg.is_absolute() else (repo / pimg).resolve()
+        if text is not None or img_path is not None:
+            ff, fsz, fw, fst = _branding_font_fields(br)
+            branding = BoardBranding(
+                text=text,
+                image_path=img_path,
+                font_family=ff,
+                font_size_pt=fsz,
+                font_weight=fw,
+                font_style=fst,
+            )
+
     return BoardProfile(
         id=str(data["id"]),
         title=str(data.get("title", data["id"])),
@@ -44,6 +117,7 @@ def load_board_profile(path: Path) -> BoardProfile:
         n_rows_top=int(geom.get("n_rows_top", data.get("n_rows_top", 4))),
         n_rows_bottom=int(geom.get("n_rows_bottom", data.get("n_rows_bottom", 4))),
         silk_profile=data.get("silk_profile"),
+        branding=branding,
         source_path=path.resolve(),
     )
 

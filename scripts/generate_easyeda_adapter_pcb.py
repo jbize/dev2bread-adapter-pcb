@@ -46,8 +46,13 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
+
+ensure_matplotlib()
+
 try:
-    from adapter_gen.board_profile import boards_dir
+    from adapter_gen.board_profile import BoardBranding, boards_dir, load_board_profile
+    from adapter_gen.branding import append_branding_easyeda_shapes
     from adapter_gen.geometry import (
         BOARD_CORNER_RADIUS_MIL,
         BoardParams,
@@ -328,6 +333,7 @@ def build_standard_compressed(
     head_outline_extra_mil: float | None = None,
     silk_pin1: bool = True,
     silk_labels: str = "devkitc1",
+    branding: BoardBranding | None = None,
 ) -> dict:
     """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings)."""
     if silk_labels not in ("none", "devkitc1", "numeric"):
@@ -346,12 +352,13 @@ def build_standard_compressed(
 
     shapes: list[str] = []
 
+    bp = BoardParams(
+        n_pins=NUM_PINS_PER_ROW * 2,
+        n_rows_top=WIDE_HEAD_DEPTH_HOLES,
+        n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
+    )
     poly_mil = board_outline_polyline_mil(
-        BoardParams(
-            n_pins=NUM_PINS_PER_ROW * 2,
-            n_rows_top=WIDE_HEAD_DEPTH_HOLES,
-            n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
-        ),
+        bp,
         corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
         arc_segments=8,
     )
@@ -476,6 +483,15 @@ def build_standard_compressed(
             paths_map = raw["paths"]
             j1, j3 = _numeric_silk_row_labels()
             _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+
+    if branding is not None:
+        append_branding_easyeda_shapes(
+            shapes,
+            nid,
+            branding=branding,
+            p=bp,
+            mil_to_u=mil_to_u,
+        )
 
     xs = [p[0] for p in poly_mil]
     ys = [p[1] for p in poly_mil]
@@ -940,7 +956,12 @@ def _legacy_expanded_pcb_path(repo: Path, board_stem: str | None) -> Path:
     return _easyeda_dir() / name
 
 
-def _write_standard(path: Path, args: Namespace) -> None:
+def _write_standard(
+    path: Path,
+    args: Namespace,
+    *,
+    branding: BoardBranding | None,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(
@@ -950,6 +971,7 @@ def _write_standard(path: Path, args: Namespace) -> None:
                 head_outline_extra_mil=args.head_outline_extra_mil,
                 silk_pin1=not args.no_silk_pin1,
                 silk_labels=args.silk_labels,
+                branding=branding,
             ),
             f,
             indent=1,
@@ -967,6 +989,11 @@ def main() -> None:
         action="store_true",
         help="Also write expanded TRACK/PAD JSON beside the Standard file "
         "(out/easyeda/<board>.pcb.json or legacy name; not for Pro).",
+    )
+    p.add_argument(
+        "--no-branding",
+        action="store_true",
+        help="Omit optional board branding from TOML ([branding] text / image), even if defined.",
     )
     p.add_argument(
         "--no-silk-pin1",
@@ -1039,21 +1066,32 @@ def main() -> None:
         p.error(f"Board profile not found: {args.profile}")
 
     board_stem: str | None = None
+    profile = None
     if args.profile is not None:
         board_stem = args.profile.resolve().stem
+        profile = load_board_profile(args.profile.resolve())
     elif args.board is not None:
         board_stem = args.board
+        profile = load_board_profile(boards_dir(repo) / f"{args.board}.toml")
+
+    branding: BoardBranding | None = None
+    if (
+        profile is not None
+        and profile.branding is not None
+        and not args.no_branding
+    ):
+        branding = profile.branding
 
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
             args.silk_labels = variant
             outp = _default_standard_path(repo, variant, board_stem=board_stem)
-            _write_standard(outp, args)
+            _write_standard(outp, args, branding=branding)
     else:
         out = args.output or _default_standard_path(
             repo, args.silk_labels, board_stem=board_stem
         )
-        _write_standard(out, args)
+        _write_standard(out, args, branding=branding)
 
     if args.legacy_expanded:
         leg_path = _legacy_expanded_pcb_path(repo, board_stem)

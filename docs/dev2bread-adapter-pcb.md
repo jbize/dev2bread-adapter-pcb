@@ -64,6 +64,14 @@ On a typical full breadboard, the **left** half of each row is **a–e** (**e** 
 
 The adapter is **44 pins** total: **2 × 22** on the head and the same **2 × 22** on the stem (**1:1** routing).
 
+### Source of truth and EasyEDA workflow
+
+The **generator owns** the board: **copper** (tracks), **outline**, and **silk** (subject to script options). The **EasyEDA Standard JSON** under `out/easyeda/` is intended to be **complete and correct** for fabrication import. If something is wrong, **change the scripts** (and rebake silk if needed), then **regenerate** — do **not** treat EasyEDA as the place to fix routing, outline, or production silk for normal work.
+
+In **EasyEDA Pro**, use the JSON **only** to **import** the design, run the **checker / DRC**, and **export Gerbers** (and other fab outputs). **Do not** manually edit copper, outline, or silk there for standard bring-up; any hand-edited escape hatch should be documented as a one-off.
+
+**Optional exception:** purely **decorative** extras (e.g. a bitmap logo on silk) are **not** in the generator; those may be added in EasyEDA as in **Branding / artwork** below — still run **DRC** before export.
+
 ### Which script does what
 
 | Script | Role |
@@ -104,10 +112,12 @@ EasyEDA Standard `TEXT` stores **stroke outlines** (like plotter paths), not a f
 
 ### Branding / artwork (e.g. a painting)
 
+This is **optional** and **outside** the generator-owned copper/outline/silk policy above; add only if you want extra decoration.
+
 **Cost:** Still usually **one silk color** included at cheap fabs; a **bitmap** on silk is often the same price as text (check **minimum line width** / **minimum feature** — often ~0.15 mm). **Extra** charges tend to be for **multiple silk colors**, **nonstandard stackups**, or **failed DRC** if artwork is too fine.
 
 **Artwork vs photo:** Silk is **one ink color** on the board — **no gradients**. A detailed painting must be **flattened** to high-contrast **1-bit** (or coarse halftone) art. Fine hair, soft clouds, and subtle shading **will not** reproduce like a print; expect a **bold, posterized** look unless you simplify. Easiest flow: convert to **monochrome PNG/SVG**, import in **EasyEDA** on **Top Silk**, scale and run **DRC**. **No technical downside** beyond clutter and fab rules — not a reason to avoid it if you like it.
 
 ### What the script does *not* include
 
-Octagonal head corners, **imported bitmap/logo** (add in EasyEDA), exact fab notes, or 3D.
+Octagonal head corners, **imported bitmap/logo** (optional; add in EasyEDA only if desired — see **Branding / artwork**), exact fab notes, or 3D.

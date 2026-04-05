@@ -6,6 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from adapter_gen.board_profile import BoardBranding
 from adapter_gen.geometry import (
     HOLE_R,
     BoardParams,
@@ -36,6 +37,7 @@ def emit_board_svg(
     *,
     silk_mode: str | None = None,
     silk_dir: Path | None = None,
+    branding: BoardBranding | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     min_x, min_y, max_x, max_y = bounds_mil(p)
@@ -54,6 +56,8 @@ def emit_board_svg(
     title_bits = [f"Adapter {p.n_pins}-pin outline + holes"]
     if silk_mode and silk_mode != "none":
         title_bits.append(f"silk={silk_mode}")
+    if branding is not None:
+        title_bits.append("branding")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -145,6 +149,44 @@ def emit_board_svg(
             )
             for d_silk in ds:
                 _sub(g_silk, "path", {"d": d_silk})
+
+    if branding is not None:
+        from adapter_gen._venv_bootstrap import ensure_matplotlib
+
+        ensure_matplotlib()
+        from adapter_gen.branding import build_branding_svg_overlay
+
+        overlay = build_branding_svg_overlay(p, branding)
+        if overlay is not None:
+            text_paths_mil, images = overlay
+            g_brand = _sub(svg, "g", {"id": "branding"})
+            g_bimg = _sub(g_brand, "g", {"id": "branding-image"})
+            for left_m, top_m, w_m, h_m, data_uri in images:
+                _sub(
+                    g_bimg,
+                    "image",
+                    {
+                        "x": f"{left_m:.2f}",
+                        "y": f"{top_m:.2f}",
+                        "width": f"{w_m:.2f}",
+                        "height": f"{h_m:.2f}",
+                        "href": data_uri,
+                    },
+                )
+            g_btxt = _sub(
+                g_brand,
+                "g",
+                {
+                    "id": "branding-text",
+                    "fill": "none",
+                    "stroke": "#2a2a28",
+                    "stroke-width": "6",
+                    "stroke-linejoin": "round",
+                    "stroke-linecap": "round",
+                },
+            )
+            for d_txt in text_paths_mil:
+                _sub(g_btxt, "path", {"d": d_txt})
 
     tree = ET.ElementTree(svg)
     ET.indent(tree, space="  ")
