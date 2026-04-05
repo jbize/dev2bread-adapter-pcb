@@ -19,6 +19,7 @@ from adapter_gen.geometry import (
     bounds_mil,
 )
 from adapter_gen.row_reverser_emit import append_row_reverser_svg
+from adapter_gen.neck_cyan_waypoints import append_neck_cyan_waypoints_svg
 from adapter_gen.top_row_cyan_waypoints import append_top_row_cyan_waypoints_svg
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
@@ -47,6 +48,7 @@ def emit_board_svg(
     row_reverser: bool = False,
     silk_gpio_paths_json: str | None = None,
     top_row_cyan_waypoints: bool = True,
+    neck_cyan_waypoints: bool = True,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     min_x, min_y, max_x, max_y = bounds_mil(p)
@@ -71,6 +73,8 @@ def emit_board_svg(
         title_bits.append("row-A inner reverser sketch")
     if top_row_cyan_waypoints:
         title_bits.append("cyan top-row waypoints")
+    if neck_cyan_waypoints:
+        title_bits.append("cyan neck waypoints")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -210,6 +214,8 @@ def emit_board_svg(
     # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
     if top_row_cyan_waypoints:
         append_top_row_cyan_waypoints_svg(svg, p, _sub)
+    if neck_cyan_waypoints:
+        append_neck_cyan_waypoints_svg(svg, p, _sub)
 
     tree = ET.ElementTree(svg)
     ET.indent(tree, space="  ")

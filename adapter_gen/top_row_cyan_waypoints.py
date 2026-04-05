@@ -10,12 +10,16 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 
 from adapter_gen.geometry import BoardParams, head_column_x_mil, wide_head_y_rows_mil
+from adapter_gen.preview_waypoint_style import (
+    LABEL_DY_MIL,
+    LABEL_FONT_SIZE_MIL,
+    MARKER_RADIUS_MIL,
+    MARKER_STROKE_MIL,
+)
 
 _STROKE = "#5599dd"
 # Discrete markers only — no segment connecting pads (that would imply a copper short).
-_WP_DOT_R = "7.0"
 _WP_DOT_FILL = "#e8f4fc"
-_WP_DOT_STROKE_W = "2.5"
 
 
 def top_row_a_waypoints_left_to_right_mil(
@@ -51,9 +55,10 @@ def append_top_row_cyan_waypoints_svg(
             "aria-label": "Top row (row A outer) waypoint markers; preview only, not copper",
         },
     )
-    tw = 6.0
-    lbl_fs = max(12.0, tw * 1.35)
-    lbl_dy = max(16.0, tw * 1.55)
+    r = f"{MARKER_RADIUS_MIL:.2f}"
+    sw = f"{MARKER_STROKE_MIL:.2f}"
+    lbl_fs = f"{LABEL_FONT_SIZE_MIL:.1f}"
+    lbl_dy = f"{LABEL_DY_MIL:.2f}"
     for x_m, y_m, seq in wpts:
         g_w = _sub(
             g,
@@ -72,10 +77,10 @@ def append_top_row_cyan_waypoints_svg(
             g_w,
             "circle",
             {
-                "r": _WP_DOT_R,
+                "r": r,
                 "fill": _WP_DOT_FILL,
                 "stroke": _STROKE,
-                "stroke-width": _WP_DOT_STROKE_W,
+                "stroke-width": sw,
             },
         )
         _sub(
@@ -83,10 +88,10 @@ def append_top_row_cyan_waypoints_svg(
             "text",
             {
                 "x": "0",
-                "y": f"{lbl_dy:.2f}",
+                "y": lbl_dy,
                 "text-anchor": "middle",
                 "fill": "#1a3a5c",
-                "font-size": f"{lbl_fs:.1f}",
+                "font-size": lbl_fs,
                 "font-weight": "600",
                 "font-family": "ui-monospace, Consolas, monospace",
                 "class": "cyan-top-row-waypoint-temp-label",
