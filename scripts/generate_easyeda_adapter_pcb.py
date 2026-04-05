@@ -51,8 +51,11 @@ try:
     from adapter_gen.geometry import (
         BOARD_CORNER_RADIUS_MIL,
         BoardParams,
+        SILK_OFF_HEAD_MIL,
+        SILK_VERTICAL_HALF_EXTENT_MIL,
         board_outline_polyline_mil,
     )
+    from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
 except ImportError as e:
     print(
         "Cannot import adapter_gen — run from the repository root.\n"
@@ -143,7 +146,13 @@ def _board_outline_polygon_mil(
     x_head_r = x_right + head_outline_extra_mil
     x_stem_l = x_ln - stem_outline_margin_mil
     x_stem_r = x_rn + stem_outline_margin_mil
-    y_top = Y_W_ROW_A - margin_mil
+    # Keep in sync with adapter_gen.geometry.board_outline_polygon_mil (vertical head silk).
+    y_top = (
+        Y_W_ROW_A
+        - SILK_OFF_HEAD_MIL
+        - SILK_VERTICAL_HALF_EXTENT_MIL
+        - margin_mil
+    )
     y_bot = stem_pin_y_mil(NUM_PINS_PER_ROW - 1) + margin_mil
     y_neck = y_stem_top - 50  # step inward just above stem
     return [
@@ -243,21 +252,35 @@ def _append_labeled_silk(
     paths_map: dict[str, str],
     j1: list[str],
     j3: list[str],
+    vertical_head: bool = False,
 ) -> None:
-    """Top silk at wide head + stem using parallel label lists (length 22 each)."""
-    _, x_ln, x_rn, _ = stem_layout_mil()
-    off_head = 62.0  # mil from row toward board edge (outside pin block)
-    off_stem = 108.0  # mil outside stem columns
+    """Top silk at wide head + stem using parallel label lists (length 22 each).
+
+    When ``vertical_head`` is True (devkitc1), head labels are rotated so they do not
+    overlap along the row; stem labels stay horizontal.
+    """
+    xc, x_ln, x_rn, _ = stem_layout_mil()
+    off_head = float(SILK_OFF_HEAD_MIL)
+    # Stem silk in the straddle gap (between pad columns and center), not outside the stem.
+    cx_stem_left = mil_to_u((x_ln + xc) / 2.0)
+    cx_stem_right = mil_to_u((xc + x_rn) / 2.0)
+
+    def _head_d(lab: str) -> str:
+        d0 = paths_map[lab]
+        if vertical_head:
+            d0 = rotate_silk_path_d(d0, HEAD_SILK_ROTATE_DEG)
+        return d0
+
     for i in range(NUM_PINS_PER_ROW):
         lab = j1[i]
-        d0 = paths_map[lab]
+        d0 = _head_d(lab)
         cx = mil_to_u(head_column_x_mil(i))
         cy = mil_to_u(Y_W_ROW_A - off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
         shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
     for i in range(NUM_PINS_PER_ROW):
         lab = j3[i]
-        d0 = paths_map[lab]
+        d0 = _head_d(lab)
         cx = mil_to_u(head_column_x_mil(i))
         cy = mil_to_u(Y_W_ROW_B + off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
@@ -265,17 +288,15 @@ def _append_labeled_silk(
     for i in range(NUM_PINS_PER_ROW):
         lab = j1[i]
         d0 = paths_map[lab]
-        cx = mil_to_u(x_ln - off_stem)
         cy = mil_to_u(stem_pin_y_mil(i))
-        dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        dabs = _offset_silk_path_d(d0, cx_stem_left, cy)
+        shapes.append(f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
     for i in range(NUM_PINS_PER_ROW):
         lab = j3[i]
         d0 = paths_map[lab]
-        cx = mil_to_u(x_rn + off_stem)
         cy = mil_to_u(stem_pin_y_mil(i))
-        dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        dabs = _offset_silk_path_d(d0, cx_stem_right, cy)
+        shapes.append(f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
 
 
 def _numeric_silk_row_labels() -> tuple[list[str], list[str]]:
@@ -429,7 +450,14 @@ def build_standard_compressed(
             if len(j1) != NUM_PINS_PER_ROW or len(j3) != NUM_PINS_PER_ROW:
                 print("Warning: DevKitC silk JSON pin count mismatch; skipping.", file=sys.stderr)
             else:
-                _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+                _append_labeled_silk(
+                    shapes,
+                    nid,
+                    paths_map=paths_map,
+                    j1=j1,
+                    j3=j3,
+                    vertical_head=True,
+                )
                 bid = raw.get("board_id_silk")
                 if isinstance(bid, dict) and isinstance(bid.get("lines"), list):
                     _append_devkitc_board_id_silk(

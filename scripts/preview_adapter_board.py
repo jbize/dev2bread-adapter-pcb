@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
-Emit SVG preview: board outline + PTH holes (new adapter_gen pipeline).
+Emit SVG preview: board outline + PTH holes (optional silk labels from baked JSON).
 
 No copper yet — validates geometry vs N and socket row counts.
+
+Silk vectors come from ``out/intermediate/silk/*.json`` (run
+``scripts/bake_devkitc_gpio_silk_paths.py`` first). Use ``--silk auto`` to follow
+the board profile's ``silk_profile`` when present.
 
 **CLI-only** (repo root: ``./scripts/preview_adapter_board.py`` — shebang ``python3``)
 
   ./scripts/preview_adapter_board.py --pins 44
       # → out/preview/board-44pin.svg
+
+  ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk devkitc1
 
 **Board profile (TOML)** — default ``-o`` is ``out/preview/<board>.svg``::
 
@@ -30,6 +36,7 @@ if str(_ROOT) not in sys.path:
 
 try:
     from adapter_gen.board_profile import (  # noqa: E402
+        BoardProfile,
         boards_dir,
         load_board_profile,
         resolve_board_params,
@@ -43,6 +50,23 @@ except ImportError as e:
         file=sys.stderr,
     )
     raise SystemExit(1) from e
+
+
+def _auto_silk_mode(profile: BoardProfile | None) -> str:
+    """Map board TOML ``silk_profile`` to preview mode (none | devkitc1 | numeric)."""
+    if profile is None or not profile.silk_profile:
+        return "none"
+    sp = profile.silk_profile
+    if sp == "devkitc1":
+        return "devkitc1"
+    if sp in ("numeric", "generic"):
+        return "numeric"
+    print(
+        f"Note: silk_profile={sp!r} is not mapped for SVG preview; "
+        "use --silk devkitc1|numeric|none.",
+        file=sys.stderr,
+    )
+    return "none"
 
 
 def main() -> None:
@@ -94,6 +118,22 @@ def main() -> None:
         help="Output SVG (default: out/preview/<name>.svg from --board or --profile "
         "stem, else out/preview/board-<N>pin.svg).",
     )
+    p.add_argument(
+        "--silk",
+        choices=("none", "devkitc1", "numeric", "auto"),
+        default="auto",
+        metavar="MODE",
+        help="Overlay silk labels from baked JSON: none | devkitc1 | numeric | auto "
+        "(use board profile silk_profile if set, else none).",
+    )
+    p.add_argument(
+        "--silk-dir",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Directory with devkitc1_gpio_silk_paths.json / numeric_silk_paths.json "
+        "(default: out/intermediate/silk under repo root).",
+    )
     args = p.parse_args()
     profile = None
     if args.profile is not None:
@@ -126,7 +166,22 @@ def main() -> None:
             out = prev / f"{args.profile.stem}.svg"
         else:
             out = prev / f"board-{bp.n_pins}pin.svg"
-    emit_board_svg(bp, out)
+
+    silk_mode = args.silk
+    if silk_mode == "auto":
+        silk_mode = _auto_silk_mode(profile)
+    silk_dir = args.silk_dir
+    if silk_dir is None:
+        silk_dir = _ROOT / "out" / "intermediate" / "silk"
+    else:
+        silk_dir = silk_dir.resolve()
+
+    emit_board_svg(
+        bp,
+        out,
+        silk_mode=None if silk_mode == "none" else silk_mode,
+        silk_dir=silk_dir,
+    )
     print(out.resolve())
 
 

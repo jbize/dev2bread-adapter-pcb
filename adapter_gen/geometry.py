@@ -26,6 +26,11 @@ HOLE_R = 20.0  # drill / pad hole radius for preview
 MARGIN = 150.0
 HEAD_OUTLINE_EXTRA = 160.0
 STEM_OUTLINE_MARGIN = 130.0
+# Wide-head silk (devkitc1 vertical): anchor offset from wide-row Y center toward board edge.
+# Tight to pads: just enough that rotated glyphs do not sit on drill/pad annuli (~PAD/2 + hole).
+SILK_OFF_HEAD_MIL = 110.0
+# Half of max span along Y of a rotated horizontal glyph (mil); ~max label width at bake size.
+SILK_VERTICAL_HALF_EXTENT_MIL = 75.0
 # Board outline corner fillet (mil); clamped to ~half the shortest edge.
 BOARD_CORNER_RADIUS_MIL = 50.0
 
@@ -64,6 +69,18 @@ def stem_layout_mil(p: BoardParams) -> tuple[float, float, float, float]:
     return xc, x_ln, x_rn, y_stem_top
 
 
+def stem_silk_x_mil_left_column(p: BoardParams) -> float:
+    """X center (mil) for stem silk labels on the J1 side (straddle gap, right of left holes)."""
+    xc, x_ln, _, _ = stem_layout_mil(p)
+    return (x_ln + xc) / 2.0
+
+
+def stem_silk_x_mil_right_column(p: BoardParams) -> float:
+    """X center (mil) for stem silk on the J3 side (straddle gap, left of right holes)."""
+    xc, _, x_rn, _ = stem_layout_mil(p)
+    return (xc + x_rn) / 2.0
+
+
 def head_column_x_mil(i: int, p: BoardParams) -> float:
     """Column index i in 0..num_cols-1 (same net ordering as legacy)."""
     return X0 + (p.num_cols - 1 - i) * PITCH
@@ -92,7 +109,13 @@ def board_outline_polygon_mil(p: BoardParams) -> list[Point2]:
     x_head_r = x_right + HEAD_OUTLINE_EXTRA
     x_stem_l = x_ln - STEM_OUTLINE_MARGIN
     x_stem_r = x_rn + STEM_OUTLINE_MARGIN
-    y_top = Y_W_ROW_A - MARGIN
+    # Extend FR4 above row A so vertical silk fits between outline edge and pad holes.
+    y_top = (
+        Y_W_ROW_A
+        - SILK_OFF_HEAD_MIL
+        - SILK_VERTICAL_HALF_EXTENT_MIL
+        - MARGIN
+    )
     y_bot = stem_pin_y_mil(nc - 1, p) + MARGIN
     y_neck = y_stem_top - 50.0
     return [
