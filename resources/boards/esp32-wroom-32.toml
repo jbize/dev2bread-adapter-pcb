@@ -1,0 +1,20 @@
+# Example: a smaller ESP32 module (fewer pins than DevKitC-1’s 44).
+# Numbers are illustrative — adjust from your module’s datasheet.
+
+schema = 1
+
+id = "esp32-wroom-32"
+title = "ESP32-WROOM-32 (generic module)"
+description = "Fewer castellated / header pins than a full DevKitC-1 breakout."
+
+# Minimum pins to break out *this* module (illustrative).
+device_min_pins = 32
+
+# Adapter PCB can still be 44-pin for breadboard compatibility, or match device.
+adapter_pins = 32
+
+silk_profile = "generic"
+
+[geometry]
+n_rows_top = 4
+n_rows_bottom = 4

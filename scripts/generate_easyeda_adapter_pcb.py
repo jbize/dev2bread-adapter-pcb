@@ -17,9 +17,10 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     column’s pads at the same X.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
-    `out/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck, or generic
-    **1–44** (`--silk-labels numeric`, `out/silk/numeric_silk_paths.json`). Re-bake paths with
-    `scripts/bake_devkitc_gpio_silk_paths.py` (writes under `out/silk/`; not committed).
+    `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
+    or generic **1–44** (`--silk-labels numeric`,
+    `out/intermediate/silk/numeric_silk_paths.json`). Re-bake paths with
+    `scripts/bake_devkitc_gpio_silk_paths.py` (writes under `out/intermediate/silk/`; not committed).
 
 Two formats exist:
   * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
@@ -40,6 +41,13 @@ import sys
 from argparse import Namespace
 from collections.abc import Callable
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from adapter_gen.board_profile import boards_dir
+from adapter_gen.geometry import BOARD_CORNER_RADIUS_MIL, BoardParams, board_outline_polyline_mil
 
 # --- Mechanical (mil) ---
 PITCH = 100  # 0.1" (2.54 mm)
@@ -145,8 +153,14 @@ def _out_dir() -> Path:
     return _repo_root() / "out"
 
 
-def _silk_dir() -> Path:
-    return _out_dir() / "silk"
+def _easyeda_dir() -> Path:
+    """Importable EasyEDA Standard PCB JSON (product for CAD import)."""
+    return _out_dir() / "easyeda"
+
+
+def _intermediate_silk_dir() -> Path:
+    """Baked silk vector paths (matplotlib output); not the board file."""
+    return _out_dir() / "intermediate" / "silk"
 
 
 def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
@@ -298,10 +312,14 @@ def build_standard_compressed(
 
     shapes: list[str] = []
 
-    poly_mil = _board_outline_polygon_mil(
-        margin_mil=margin,
-        head_outline_extra_mil=head_ex,
-        stem_outline_margin_mil=stem_om,
+    poly_mil = board_outline_polyline_mil(
+        BoardParams(
+            n_pins=NUM_PINS_PER_ROW * 2,
+            n_rows_top=WIDE_HEAD_DEPTH_HOLES,
+            n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
+        ),
+        corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
+        arc_segments=8,
     )
     ow = mil_to_u(OUTLINE_STROKE) or 0.5
     for i in range(len(poly_mil)):
@@ -383,7 +401,7 @@ def build_standard_compressed(
             )
 
     if silk_labels == "devkitc1":
-        data_path = _silk_dir() / "devkitc1_gpio_silk_paths.json"
+        data_path = _intermediate_silk_dir() / "devkitc1_gpio_silk_paths.json"
         if not data_path.is_file():
             print(
                 f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py "
@@ -405,7 +423,7 @@ def build_standard_compressed(
                         shapes, nid, lines=bid["lines"]
                     )
     elif silk_labels == "numeric":
-        data_path = _silk_dir() / "numeric_silk_paths.json"
+        data_path = _intermediate_silk_dir() / "numeric_silk_paths.json"
         if not data_path.is_file():
             print(
                 f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py. "
@@ -512,7 +530,15 @@ def build_legacy_expanded() -> dict:
     signals: dict[str, list] = {f"NET{n}": [] for n in range(1, 45)}
     signals[""] = []
 
-    poly_mil = _board_outline_polygon_mil()
+    poly_mil = board_outline_polyline_mil(
+        BoardParams(
+            n_pins=NUM_PINS_PER_ROW * 2,
+            n_rows_top=WIDE_HEAD_DEPTH_HOLES,
+            n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
+        ),
+        corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
+        arc_segments=8,
+    )
     xs = [p[0] for p in poly_mil]
     ys = [p[1] for p in poly_mil]
     x_min, x_max = min(xs), max(xs)
@@ -850,12 +876,27 @@ def _layers_expanded() -> dict:
     }
 
 
-def _default_standard_path(repo: Path, silk_labels: str) -> Path:
-    """Default JSON path: kit-specific / generic names avoid overwriting different silk modes."""
-    base = repo / "out"
+def _default_standard_path(
+    repo: Path, silk_labels: str, *, board_stem: str | None
+) -> Path:
+    """Default JSON path; ``board_stem`` from ``--board`` / ``--profile`` sets the basename."""
+    base = repo / "out" / "easyeda"
+    if board_stem:
+        if silk_labels == "none":
+            return base / f"{board_stem}.standard.json"
+        return base / f"{board_stem}.{silk_labels}.standard.json"
     if silk_labels == "none":
         return base / "easyeda-adapter-44pin-dev2bread.standard.json"
     return base / f"easyeda-adapter-44pin-dev2bread.{silk_labels}.standard.json"
+
+
+def _legacy_expanded_pcb_path(repo: Path, board_stem: str | None) -> Path:
+    name = (
+        f"{board_stem}.pcb.json"
+        if board_stem
+        else "easyeda-adapter-44pin-dev2bread.pcb.json"
+    )
+    return _easyeda_dir() / name
 
 
 def _write_standard(path: Path, args: Namespace) -> None:
@@ -883,7 +924,8 @@ def main() -> None:
     p.add_argument(
         "--legacy-expanded",
         action="store_true",
-        help="Also write out/easyeda-adapter-44pin-dev2bread.pcb.json (expanded; not for Pro)",
+        help="Also write expanded TRACK/PAD JSON beside the Standard file "
+        "(out/easyeda/<board>.pcb.json or legacy name; not for Pro).",
     )
     p.add_argument(
         "--no-silk-pin1",
@@ -896,18 +938,34 @@ def main() -> None:
         default="devkitc1",
         help="Per-pin silk on head+stem: ESP32-S3-DevKitC-1 v1.1 names, logical 1–44, or text off.",
     )
+    src = p.add_mutually_exclusive_group()
+    src.add_argument(
+        "--profile",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Board TOML; file stem is used for default output names (alternative to --board).",
+    )
+    src.add_argument(
+        "--board",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Load resources/boards/<NAME>.toml; name is used for default output filenames.",
+    )
     p.add_argument(
         "-o",
         "--output",
         type=Path,
         default=None,
         metavar="FILE",
-        help="Override output path (default: out/easyeda-adapter-44pin-dev2bread.<variant>.standard.json).",
+        help="Override output path (default: out/easyeda/<board>.<silk>.standard.json, or "
+        "legacy easyeda-adapter-44pin-dev2bread.* when no --board/--profile).",
     )
     p.add_argument(
         "--all-variants",
         action="store_true",
-        help="Write both DevKitC-1 and numeric silk files to their default paths (ignores -o).",
+        help="Write devkitc1 + numeric to default paths (ignores -o).",
     )
     p.add_argument(
         "--margin-mil",
@@ -932,17 +990,32 @@ def main() -> None:
     )
     args = p.parse_args()
 
+    if args.board is not None:
+        board_path = boards_dir(repo) / f"{args.board}.toml"
+        if not board_path.is_file():
+            p.error(f"Board profile not found: {board_path}")
+    if args.profile is not None and not args.profile.is_file():
+        p.error(f"Board profile not found: {args.profile}")
+
+    board_stem: str | None = None
+    if args.profile is not None:
+        board_stem = args.profile.resolve().stem
+    elif args.board is not None:
+        board_stem = args.board
+
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
             args.silk_labels = variant
-            outp = _default_standard_path(repo, variant)
+            outp = _default_standard_path(repo, variant, board_stem=board_stem)
             _write_standard(outp, args)
     else:
-        out = args.output or _default_standard_path(repo, args.silk_labels)
+        out = args.output or _default_standard_path(
+            repo, args.silk_labels, board_stem=board_stem
+        )
         _write_standard(out, args)
 
     if args.legacy_expanded:
-        leg_path = _out_dir() / "easyeda-adapter-44pin-dev2bread.pcb.json"
+        leg_path = _legacy_expanded_pcb_path(repo, board_stem)
         leg_path.parent.mkdir(parents=True, exist_ok=True)
         with leg_path.open("w", encoding="utf-8") as f:
             json.dump(build_legacy_expanded(), f, indent=1)

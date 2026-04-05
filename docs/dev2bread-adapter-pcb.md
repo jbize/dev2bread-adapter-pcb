@@ -69,7 +69,7 @@ The adapter is **44 pins** total: **2 × 22** on the head and the same **2 × 22
 | Script | Role |
 |--------|------|
 | **`scripts/generate_easyeda_adapter_pcb.py`** | Builds the **EasyEDA Standard** PCB JSON (copper, outline, silk). Run this whenever you change geometry or silk mode. |
-| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`out/silk/*.json`** (needs a **venv** + **matplotlib**). Re-run when fonts or label tables change. |
+| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`out/intermediate/silk/*.json`** (needs a **venv** + **matplotlib**). Re-run when fonts or label tables change. |
 
 ### EasyEDA files (default names)
 
@@ -77,24 +77,24 @@ Import in **EasyEDA Pro**: **File → Import → Import EasyEDA Standard Edition
 
 | Output file | Contents |
 |-------------|----------|
-| **`out/easyeda-adapter-44pin-dev2bread.devkitc1.standard.json`** | **Kit-specific silk:** ESP32-S3-DevKitC-1 v1.1 J1/J3 names (same mapping as [Espressif’s tables](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html)). Use when the dev board is that kit. |
-| **`out/easyeda-adapter-44pin-dev2bread.numeric.standard.json`** | **Generic silk:** labels **1–44** only (matches logical net index / copper pad numbers — not tied to a vendor pinout). |
-| **`out/easyeda-adapter-44pin-dev2bread.standard.json`** | **No per-pin silk text** (pin-1 circles still on unless `--no-silk-pin1`). |
+| **`out/easyeda/easyeda-adapter-44pin-dev2bread.devkitc1.standard.json`** | **Kit-specific silk:** ESP32-S3-DevKitC-1 v1.1 J1/J3 names (same mapping as [Espressif’s tables](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html)). Use when the dev board is that kit. |
+| **`out/easyeda/easyeda-adapter-44pin-dev2bread.numeric.standard.json`** | **Generic silk:** labels **1–44** only (matches logical net index / copper pad numbers — not tied to a vendor pinout). |
+| **`out/easyeda/easyeda-adapter-44pin-dev2bread.standard.json`** | **No per-pin silk text** (pin-1 circles still on unless `--no-silk-pin1`). |
 
 Regenerate examples:
 
 ```bash
-python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels devkitc1   # → *.devkitc1.standard.json
-python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels numeric   # → *.numeric.standard.json
-python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels none       # → *.standard.json
-python3 scripts/generate_easyeda_adapter_pcb.py --all-variants           # writes devkitc1 + numeric
+python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels devkitc1   # → out/easyeda/*.devkitc1.standard.json
+python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels numeric   # → out/easyeda/*.numeric.standard.json
+python3 scripts/generate_easyeda_adapter_pcb.py --silk-labels none       # → out/easyeda/*.standard.json
+python3 scripts/generate_easyeda_adapter_pcb.py --all-variants           # writes devkitc1 + numeric under out/easyeda/
 ```
 
 Use **`-o PATH`** to override the output file. **`--all-variants`** writes both kit-specific and numeric defaults (ignores `-o`).
 
 - **Silk (pin 1):** Two small **open circles** on Top Silk marking **pin 1** (wide head row A, stem). Omit with **`--no-silk-pin1`**.
 - **Per-pin silk text:** **88** Top Silk `TEXT` objects for `numeric` (two rows × 22 on the head + two columns × 22 on the stem). **`devkitc1` adds two more** **above the stem** (below the J3 GPIO row, not over those labels): **ESP32-S3-DevKitC-1** and **v1.1 · J1/J3** — **90** `TEXT` total. For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
-- Vector paths: `out/silk/devkitc1_gpio_silk_paths.json` and `out/silk/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
+- Vector paths: `out/intermediate/silk/devkitc1_gpio_silk_paths.json` and `out/intermediate/silk/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
 - **Stronger board / more FR4:** `--margin-mil`, `--stem-outline-margin-mil`, `--head-outline-extra-mil`.
 - Optional legacy expanded JSON: `--legacy-expanded`
 

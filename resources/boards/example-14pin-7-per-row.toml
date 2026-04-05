@@ -1,0 +1,21 @@
+# Smaller adapter example: 7 columns per row → 14 pins total (2×7).
+# device_min_pins stays 44 for a DevKitC-class *module*, but this PCB only
+# implements a 14-pin subset (partial adapter).
+
+schema = 1
+
+id = "example-14pin-7-per-row"
+title = "14-pin example (7 per row)"
+description = "Subset T-adapter; not a full DevKitC breakout."
+
+# Full DevKitC-1 still needs 44 pins to break out every signal; this board is partial.
+device_min_pins = 44
+
+# Adapter footprint: 14 pins (must be even, 14–44).
+adapter_pins = 14
+
+silk_profile = "generic"
+
+[geometry]
+n_rows_top = 4
+n_rows_bottom = 4

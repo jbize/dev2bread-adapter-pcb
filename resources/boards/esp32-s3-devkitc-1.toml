@@ -1,0 +1,21 @@
+# Board profile — ESP32-S3-DevKitC-1 class (Espressif J1/J3, v1.1 pin tables).
+# Loaded by adapter_gen; CLI can override adapter_pins / geometry.
+
+schema = 1
+
+id = "esp32-s3-devkitc-1-v1.1"
+title = "ESP32-S3-DevKitC-1"
+description = "Two 22-pin headers (~1.1″ row spacing); full breakout needs both rows."
+
+# Minimum pins to fully break out this module (both header rows populated).
+device_min_pins = 44
+
+# Default adapter size for this design (even, 14–44). Same as device for full kit.
+adapter_pins = 44
+
+# Future: silk stroke labels — "generic" (1…N) or board-specific bake key.
+silk_profile = "devkitc1"
+
+[geometry]
+n_rows_top = 4
+n_rows_bottom = 4
