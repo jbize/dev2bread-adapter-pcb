@@ -1,6 +1,8 @@
 """Emit row-reverser preview (SVG) and EasyEDA Standard shapes from shared geometry.
 
-Single source: ``compute_row_reverser_geometry_mil`` + ``row_reverser_y_pad_row_a_innermost_mil``.
+Geometry: ``compute_row_reverser_geometry_mil`` + ``row_reverser_y_pad_row_a_innermost_mil``;
+wide-head stub routing from ``reverser_head_stub_routing_mil`` (cyan + optional bottom PTHs;
+not T-stem / neck copper).
 Cyan polylines → Top copper (layer 1); red → Bottom copper (layer 2). Matches
 ``docs/top-row-reverser-routing.md`` and ``emit_board_svg(..., row_reverser=True)``.
 
@@ -14,7 +16,8 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 
-from adapter_gen.geometry import BoardParams
+from adapter_gen.geometry import HOLE_R, PAD_SIZE, BoardParams
+from adapter_gen.reverser_head_stubs import reverser_head_stub_routing_mil
 from adapter_gen.row_reverser_geometry import (
     compute_row_reverser_geometry_mil,
     polyline_points_attr,
@@ -56,6 +59,8 @@ def append_row_reverser_easyeda_shapes(
     if geom is None:
         return
     sw = mil_to_u(geom.trace_stroke)
+    rhs = reverser_head_stub_routing_mil(p, y_pad_row=y_pad)
+    cyan = list(geom.cyan) + ([] if rhs is None else rhs.cyan_segments)
 
     def add_segments(
         seg: list[tuple[float, float]], layer: str
@@ -70,7 +75,7 @@ def append_row_reverser_easyeda_shapes(
                 f"{mil_to_u(x2)} {mil_to_u(y2)}~{nid()}~0"
             )
 
-    for seg in geom.cyan:
+    for seg in cyan:
         add_segments(seg, LAYER_TOP_COPPER)
     for seg in geom.red:
         add_segments(seg, LAYER_BOTTOM_COPPER)
@@ -81,6 +86,14 @@ def append_row_reverser_easyeda_shapes(
         shapes.append(
             f"VIA~{mil_to_u(vx_m)}~{mil_to_u(vy_m)}~{d_u}~~{hr_u}~{nid()}"
         )
+
+    if rhs is not None:
+        pw = mil_to_u(PAD_SIZE)
+        hr_pad = mil_to_u(HOLE_R)
+        for x_m, y_m, net in rhs.bottom_pads:
+            shapes.append(
+                f"PAD~ELLIPSE~{mil_to_u(x_m)}~{mil_to_u(y_m)}~{pw}~{pw}~11~~{net}~{hr_pad}~~0~{nid()}"
+            )
 
 
 def append_row_reverser_svg(
@@ -93,6 +106,8 @@ def append_row_reverser_svg(
     geom = compute_row_reverser_geometry_mil(p, y_pad_row=y_pad)
     if geom is None:
         return
+    rhs = reverser_head_stub_routing_mil(p, y_pad_row=y_pad)
+    cyan = list(geom.cyan) + ([] if rhs is None else rhs.cyan_segments)
     tw = f"{geom.trace_stroke:.1f}"
     g_rr = _sub(svg, "g", {"id": "row-reverser"})
     g_in = _sub(
@@ -125,12 +140,48 @@ def append_row_reverser_svg(
             "stroke-linejoin": "round",
         },
     )
-    for seg in geom.cyan:
+    for seg in cyan:
         _sub(
             g_out,
             "polyline",
             {"points": polyline_points_attr(seg)},
         )
+    pr = f"{PAD_SIZE * 0.5:.2f}"
+    if rhs is not None:
+        sw_ns = max(1.0, float(tw) * 0.35)
+        g_ns = _sub(
+            g_rr,
+            "g",
+            {
+                "id": "reverser-head-stub-pads",
+                "fill": "#3a3a3a",
+                "stroke": "#888888",
+                "stroke-width": f"{sw_ns:.2f}",
+            },
+        )
+        tpad = max(8.0, float(PAD_SIZE) * 0.22)
+        for x_m, y_m, net in rhs.bottom_pads:
+            g_p = _sub(
+                g_ns,
+                "g",
+                {
+                    "id": f"reverser-head-stub-pad-net-{net}",
+                    "transform": f"translate({x_m:.2f},{y_m:.2f})",
+                },
+            )
+            _sub(g_p, "circle", {"r": pr})
+            _sub(
+                g_p,
+                "text",
+                {
+                    "x": "0",
+                    "y": f"{float(pr) * 0.35:.2f}",
+                    "text-anchor": "middle",
+                    "fill": "#9cf",
+                    "font-size": f"{tpad:.1f}",
+                    "font-family": "ui-monospace, Consolas, monospace",
+                },
+            ).text = net
     vx = geom.via_cross_arm
     vr = f"{geom.via_r:.2f}"
     g_v = _sub(
@@ -144,12 +195,16 @@ def append_row_reverser_svg(
             "stroke-linecap": "round",
         },
     )
-    for vx_m, vy_m in geom.vias:
+    lbl_fs = max(8.0, geom.via_r * 1.25)
+    lbl_y = float(vr) + max(5.0, geom.via_r * 0.45)
+    for (vx_m, vy_m), vlab in zip(geom.vias, geom.via_labels, strict=True):
         g_one = _sub(
             g_v,
             "g",
             {
+                "id": f"via-{vlab}",
                 "transform": f"translate({vx_m:.2f},{vy_m:.2f})",
+                "aria-label": f"passthrough {vlab}",
             },
         )
         _sub(g_one, "circle", {"r": vr})
@@ -177,3 +232,15 @@ def append_row_reverser_svg(
                 "stroke-width": f"{max(0.8, geom.via_r * 0.12):.2f}",
             },
         )
+        _sub(
+            g_one,
+            "text",
+            {
+                "x": "0",
+                "y": f"{lbl_y:.2f}",
+                "text-anchor": "middle",
+                "fill": "#b8e6c8",
+                "font-size": f"{lbl_fs:.1f}",
+                "font-family": "ui-monospace, Consolas, monospace",
+            },
+        ).text = vlab

@@ -51,6 +51,9 @@ class RowReverserGeometry:
     red: list[list[tuple[float, float]]]
     cyan: list[list[tuple[float, float]]]
     vias: list[tuple[float, float]]
+    # Same length as ``vias``: 1-based labels with pad Jk (k = i+1). Edge E{k} at (x_e, y_v(i));
+    # gap G{k} at inner end of red from lane i (i < n-1 only). Jn has E{n} only.
+    via_labels: list[str]
     via_cross_arm: float
     trace_stroke: float
     via_r: float
@@ -61,7 +64,7 @@ class RowReverserGeometry:
 def row_reverser_y_pad_row_a_innermost_mil(p: BoardParams) -> float:
     """Y center (mil) of innermost wide row-A socket row (bottom of the top/stack rows).
 
-    That is the row-A pad line closest to the neck gap — still nets ``1..N/2`` per column, not
+    That is the row-A pad line closest to the gap toward the stem — still nets ``1..N/2`` per column, not
     row B. Matches the usual “inside” header row when four rows are populated on the top block.
     """
     ys = wide_head_y_rows_mil(p=p, from_row_a=True)
@@ -82,7 +85,6 @@ def _compute_row_reverser_core(
     max_y_span: float | None,
     y_min_floor: float | None = None,
     row_a_y_ascending: list[float] | None = None,
-    stem_side_row_b_y: float | None = None,
 ) -> RowReverserGeometry | None:
     if n < 2:
         return None
@@ -154,31 +156,27 @@ def _compute_row_reverser_core(
     for i in range(n):
         cyan.append([(x_col(i), y_pad_row), (x_e, y_v(i))])
 
-    # Bottom-right passthrough in the reverser head = edge via V_{n-1} at (x_e, y_v(n-1)): lowest
-    # edge-stack via, right of the pad columns. One top-layer stub straight down to just below the
-    # stem-side row of the wide head (bottom socket row on the head, before the neck).
-    if stem_side_row_b_y is not None and n >= 2:
-        y_bottom_right_via = y_v(n - 1)
-        y_end = stem_side_row_b_y + pad_r + neck_clearance_mil + trace_stroke / 2.0
-        if y_end > y_bottom_right_via + 1e-6:
-            cyan.append([(x_e, y_bottom_right_via), (x_e, y_end)])
-
     vias: list[tuple[float, float]] = []
+    via_labels: list[str] = []
     for i in range(n):
         ye = y_v(i)
         inner_x = x_inner_horizontal_end(i)
         if inner_x is None:
             vias.append((x_e, ye))
+            via_labels.append(f"E{i + 1}")
         else:
             yi = y_inner_terminal(i)
             vias.append((x_e, ye))
             vias.append((inner_x, yi))
+            via_labels.append(f"E{i + 1}")
+            via_labels.append(f"G{i + 1}")
 
     via_cross = max(3.0, via_r * 0.45)
     return RowReverserGeometry(
         red=red,
         cyan=cyan,
         vias=vias,
+        via_labels=via_labels,
         via_cross_arm=via_cross,
         trace_stroke=trace_stroke,
         via_r=via_r,
@@ -210,9 +208,8 @@ def compute_row_reverser_geometry_mil(
     segments joining all of those pad centers at ``x(i)``, then the usual diagonal from the
     innermost row-A pad (``y_pad_row``) to edge via ``V_i``.
 
-    One extra cyan segment runs from the bottom-right edge passthrough ``V_{n-1}`` (``x_e``,
-    ``y_v(n-1)``) vertically down to just below the stem-side row of the wide head (Y from
-    ``wide_head_y_rows_mil(..., from_row_a=False)[0]``).
+    Wide-head exit stubs (below the socket rows, not stem copper) are **not** part of this struct;
+    see ``reverser_head_stubs`` and ``row_reverser_emit``.
     """
     n = p.num_cols
 
@@ -220,7 +217,6 @@ def compute_row_reverser_geometry_mil(
         return head_column_x_mil(i, p)
 
     ys_a = wide_head_y_rows_mil(p=p, from_row_a=True)
-    y_b_stem = wide_head_y_rows_mil(p=p, from_row_a=False)[0]
     return _compute_row_reverser_core(
         n,
         x_col,
@@ -234,7 +230,6 @@ def compute_row_reverser_geometry_mil(
         max_y_span=max_y_span,
         y_min_floor=y_min_floor,
         row_a_y_ascending=ys_a,
-        stem_side_row_b_y=y_b_stem,
     )
 
 
@@ -271,7 +266,6 @@ def compute_row_reverser_geometry_mil_standalone(
         max_y_span=max_y_span,
         y_min_floor=y_min_floor,
         row_a_y_ascending=None,
-        stem_side_row_b_y=None,
     )
 
 
