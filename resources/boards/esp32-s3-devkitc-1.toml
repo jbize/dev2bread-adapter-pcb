@@ -13,7 +13,7 @@ device_min_pins = 44
 # Default adapter size for this design (even, 14–44). Same as device for full kit.
 adapter_pins = 44
 
-# Future: silk stroke labels — "generic" (1…N) or board-specific bake key.
+# Per-pin GPIO silk: baked JSON filename (see [silk_bake]); preview/generator load this when silk_profile is devkitc1.
 silk_profile = "devkitc1"
 
 # Optional Top Silk branding in the wide-head center gap (between J1/J3 rows).
@@ -33,3 +33,64 @@ n_rows_top = 4
 n_rows_bottom = 4
 # Drop the row-B row nearest the gap (row-A reverser / vias need clearance).
 omit_row_b_gap_adjacent = true
+
+# Vendor J1/J3 label strings for scripts/bake_devkitc_gpio_silk_paths.py → out/intermediate/silk/<output>
+[silk_bake]
+output = "devkitc1_gpio_silk_paths.json"
+variant = "esp32-s3-devkitc-1-v1.1"
+source = "Espressif ESP32-S3-DevKitC-1 v1.1 header tables (J1, J3)"
+note = "Net i (1..22) = J1 pin i; net i+22 (23..44) = J3 pin i. Board orientation: J1 toward side A."
+j1_labels = [
+  "3V3",
+  "3V3",
+  "RST",
+  "4",
+  "5",
+  "6",
+  "7",
+  "15",
+  "16",
+  "17",
+  "18",
+  "8",
+  "3",
+  "46",
+  "9",
+  "10",
+  "11",
+  "12",
+  "13",
+  "14",
+  "5V",
+  "GND"
+]
+j3_labels = [
+  "GND",
+  "TX",
+  "RX",
+  "1",
+  "2",
+  "42",
+  "41",
+  "40",
+  "39",
+  "38",
+  "37",
+  "36",
+  "35",
+  "0",
+  "45",
+  "48",
+  "47",
+  "21",
+  "20",
+  "19",
+  "GND",
+  "GND"
+]
+[[silk_bake.board_id_lines]]
+text = "ESP32-S3-DevKitC-1"
+height = 5.5
+[[silk_bake.board_id_lines]]
+text = "v1.1 · J1/J3"
+height = 4.5

@@ -35,7 +35,7 @@ Default output filenames avoid overwriting variants: `out/easyeda/easyeda-adapte
 | Script | When to run |
 |--------|----------------|
 | `scripts/generate_easyeda_adapter_pcb.py` | **Always** for PCB JSON changes. The script does not import matplotlib; for **`devkitc1` / `numeric` silk**, run **`bake` first** so **`out/intermediate/silk/*.json`** exist. |
-| `scripts/bake_devkitc_gpio_silk_paths.py` | Before first **`devkitc1` / `numeric`** generation, and when **regenerating** silk paths (fonts, labels). Needs **venv + matplotlib**. Writes **`out/intermediate/silk/`** (both DevKitC and numeric files). |
+| `scripts/bake_devkitc_gpio_silk_paths.py` | Before first **`devkitc1` / `numeric`** generation, and when **regenerating** silk paths (fonts, labels). Needs **venv + matplotlib**. Writes **`numeric_silk_paths.json`** and GPIO JSON files from **`[silk_bake]`** in **`resources/boards/*.toml`** (default: **`--all`**). |
 
 ## Reference assets in `resources/images/`
 
@@ -71,13 +71,13 @@ Use this when you have not touched the repo for a while or a new session needs f
 |------|--------|
 | **In play** (parametric geometry + SVG preview) | `adapter_gen/geometry.py`, `adapter_gen/board_profile.py`, `adapter_gen/svg_preview.py`, `adapter_gen/__init__.py`, `scripts/preview_adapter_board.py` |
 | **Legacy bridge** (full EasyEDA JSON: copper, routing, silk) | `scripts/generate_easyeda_adapter_pcb.py` — still duplicates most layout constants; only **imports** `adapter_gen` for the **rounded board outline polyline**. Replace when a proper emitter lives under `adapter_gen`. |
-| **Silk path baking** (optional pre-step) | `scripts/bake_devkitc_gpio_silk_paths.py` — writes **`out/intermediate/silk/*.json`**; needs **matplotlib**. Not part of `adapter_gen`. |
+| **Silk path baking** (optional pre-step) | `scripts/bake_devkitc_gpio_silk_paths.py` — writes **`out/intermediate/silk/`** (numeric + **`[silk_bake]`** boards); needs **matplotlib**. Core helpers in **`adapter_gen/silk_bake.py`**. |
 
 ### Board TOML vs silk labels vs copper nets (keep these separate)
 
 - **`resources/boards/*.toml`** — schema `1`: `id`, `device_min_pins`, `adapter_pins`, `[geometry]` (`n_rows_top` / `n_rows_bottom`), optional **`silk_profile`** string (e.g. `"devkitc1"`). Used by **`preview_adapter_board`** to build **`BoardParams`**. **Does not** contain per-pin name strings like `3V3` or `RST`.
 - **Logical / programmatic pins** — nets **`NET1`…`NET44`** (or equivalent indices) in the generator; **1:1** head-to-stem. This is the stable reference for code and copper.
-- **Vendor silk text** (what humans read on the PCB) — **not** read from TOML today. **`devkitc1`** names come from **hardcoded lists** in **`bake_devkitc_gpio_silk_paths.py`**, baked into **`out/intermediate/silk/devkitc1_gpio_silk_paths.json`**. **`generate_easyeda_adapter_pcb.py`** chooses silk via **`--silk-labels`** and loads that JSON; it does **not** load board TOML.
+- **Vendor silk text** (GPIO names on the head) — **`[silk_bake]`** in **`resources/boards/<name>.toml`** (`j1_labels`, `j3_labels`, **`output`** JSON basename). **`bake_devkitc_gpio_silk_paths.py`** writes **`out/intermediate/silk/<output>`**. **`generate_easyeda_adapter_pcb.py`** loads that file when **`--silk-labels devkitc1`** and the profile sets **`silk_gpio_paths_json`** (from **`[silk_bake].output`**); legacy default filename is **`devkitc1_gpio_silk_paths.json`**.
 - **Independence rule** — treat **logical pin index** (1…N) as canonical; **silk** is a **display layer** that maps index → vendor string per profile. A future schema could move silk tables into data files or TOML; **`silk_profile`** in the board file is a **hook** for that, not the implementation yet.
 
 ### `out/` layout (generated; gitignored)
@@ -92,7 +92,7 @@ Use this when you have not touched the repo for a while or a new session needs f
 
 ```bash
 # From repo root. Bake re-launches with `.venv/bin/python` when matplotlib is missing on `python3`.
-./scripts/bake_devkitc_gpio_silk_paths.py
+./scripts/bake_devkitc_gpio_silk_paths.py --all
 ./scripts/generate_easyeda_adapter_pcb.py --board esp32-s3-devkitc-1 --silk-labels devkitc1
 ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1
 ```

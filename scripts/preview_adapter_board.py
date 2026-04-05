@@ -233,6 +233,10 @@ def main() -> None:
     else:
         row_reverser = True
 
+    silk_gpio_paths_json = (
+        profile.silk_gpio_paths_json if profile is not None else None
+    )
+
     emit_board_svg(
         bp,
         out,
@@ -240,6 +244,7 @@ def main() -> None:
         silk_dir=silk_dir,
         branding=branding,
         row_reverser=row_reverser,
+        silk_gpio_paths_json=silk_gpio_paths_json,
     )
     print(out.resolve())
 

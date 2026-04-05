@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
-One-off: build EasyEDA TEXT path strings for adapter silk (DejaVu Sans).
+Bake EasyEDA silk path JSON (matplotlib TextPath → ``d`` strings).
 
-Requires: **matplotlib** (third-party). If you run with system ``python3`` and it is missing,
-this script re-executes with ``repo/.venv/bin/python`` when that exists; otherwise it prints
-how to install.
+Requires **matplotlib**. Re-executes with ``repo/.venv/bin/python`` when needed
+(see ``adapter_gen._venv_bootstrap``).
 
-Writes (under repo `out/intermediate/silk/`; gitignored — run before board generation):
-  * devkitc1_gpio_silk_paths.json — ESP32-S3-DevKitC-1 v1.1 J1/J3 names
-  * numeric_silk_paths.json — strings "1" .. "44" (generic pin index silk)
+**Vendor GPIO silk** (per-pin J1/J3 names) is driven by ``[silk_bake]`` in each
+``resources/boards/<board>.toml`` (``j1_labels``, ``j3_labels``, ``output``, …).
+
+**Numeric silk** (logical 1…N) is ``numeric_silk_paths.json`` (default max pin 44).
+
+Writes under ``out/intermediate/silk/`` (gitignored).
+
+Examples (repo root)::
+
+  ./scripts/bake_devkitc_gpio_silk_paths.py --all
+  ./scripts/bake_devkitc_gpio_silk_paths.py --board esp32-s3-devkitc-1
+  ./scripts/bake_devkitc_gpio_silk_paths.py --numeric-only
 """
 
 from __future__ import annotations
 
-import json
+import argparse
 import sys
 from pathlib import Path
 
@@ -25,152 +33,87 @@ from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
 
 ensure_matplotlib()
 
-from matplotlib.font_manager import FontProperties
-from matplotlib.path import Path as MPath
-from matplotlib.text import TextPath
-from matplotlib.transforms import Affine2D
-
-# Short silk strings matching Espressif J1/J3 "Name" column (v1.1), nets 1–22 per row.
-# Net 1–22 = J1 pin 1–22 along +X; net 23–44 = J3 pin 1–22 along +X.
-# User must orient the dev board so J1 faces side A and J3 faces side B.
-J1_SILK = [
-    "3V3",
-    "3V3",
-    "RST",
-    "4",
-    "5",
-    "6",
-    "7",
-    "15",
-    "16",
-    "17",
-    "18",
-    "8",
-    "3",
-    "46",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "5V",
-    "GND",
-]
-J3_SILK = [
-    "GND",
-    "TX",
-    "RX",
-    "1",
-    "2",
-    "42",
-    "41",
-    "40",
-    "39",
-    "38",
-    "37",
-    "36",
-    "35",
-    "0",
-    "45",
-    "48",
-    "47",
-    "21",
-    "20",
-    "19",
-    "GND",
-    "GND",
-]
-
-TARGET_H_FILE = 4.5  # ~45 mil letter height in EasyEDA file units (÷10 = mil)
-# Board identification (neck / base of head), devkitc1 silk only — not per-pin strings.
-BOARD_ID_LINES: tuple[tuple[str, float], ...] = (
-    ("ESP32-S3-DevKitC-1", 5.5),
-    ("v1.1 · J1/J3", 4.5),
+from adapter_gen.board_profile import boards_dir  # noqa: E402
+from adapter_gen.silk_bake import (  # noqa: E402
+    bake_gpio_from_board_toml,
+    iter_board_tomls_with_silk_bake,
+    write_numeric_silk_json,
 )
 
 
-def _path_to_d(path: MPath) -> str:
-    """Flatten to M/L/Z only (EasyEDA-style), coordinates as in matplotlib space."""
-    path = path.interpolated(10)
-    verts = path.vertices
-    codes = path.codes
-    parts: list[str] = []
-    i = 0
-    while i < len(verts):
-        c = int(codes[i])
-        x, y = float(verts[i, 0]), float(verts[i, 1])
-        if c == MPath.MOVETO:
-            parts.append(f"M {x:.2f} {y:.2f}")
-        elif c == MPath.LINETO:
-            parts.append(f"L {x:.2f} {y:.2f}")
-        elif c == MPath.CLOSEPOLY:
-            parts.append("Z")
-        elif c in (MPath.CURVE3, MPath.CURVE4):
-            # Should not appear after interpolated()
-            i += 1
-            continue
-        i += 1
-    return " ".join(parts)
-
-
-def text_to_path_at_origin(label: str, *, target_h: float = TARGET_H_FILE) -> str:
-    fp = FontProperties(family="DejaVu Sans", size=72)
-    tp = TextPath((0, 0), label, prop=fp)
-    path = MPath(tp.vertices, tp.codes)
-    bb = path.get_extents()
-    h = max(bb.height, 1e-6)
-    scale = target_h / h
-    cx = (bb.x0 + bb.x1) / 2.0
-    cy = (bb.y0 + bb.y1) / 2.0
-    trans = (
-        Affine2D()
-        .translate(-cx, -cy)
-        .scale(scale, -scale)
-    )
-    p2 = path.transformed(trans)
-    return _path_to_d(p2)
-
-
 def main() -> None:
-    root = Path(__file__).resolve().parent.parent / "out" / "intermediate" / "silk"
-    root.mkdir(parents=True, exist_ok=True)
+    ap = argparse.ArgumentParser(
+        description=(
+            "Bake silk path JSON for adapter previews and EasyEDA generator "
+            "(GPIO labels from board TOML [silk_bake]; numeric 1..N)."
+        )
+    )
+    ap.add_argument(
+        "--board",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help=(
+            "Bake GPIO silk for resources/boards/<NAME>.toml "
+            "(must define [silk_bake])."
+        ),
+    )
+    ap.add_argument(
+        "--all",
+        action="store_true",
+        help=(
+            "Bake numeric silk + GPIO silk for each board TOML with "
+            "[silk_bake].output."
+        ),
+    )
+    ap.add_argument(
+        "--numeric-only",
+        action="store_true",
+        help="Only write numeric_silk_paths.json.",
+    )
+    ap.add_argument(
+        "--max-pin",
+        type=int,
+        default=44,
+        metavar="N",
+        help="Largest string key in numeric silk (default 44).",
+    )
+    args = ap.parse_args()
 
-    uniq = sorted(set(J1_SILK + J3_SILK), key=len)
-    paths = {s: text_to_path_at_origin(s) for s in uniq}
-    out_devkitc = root / "devkitc1_gpio_silk_paths.json"
-    board_lines = [
-        {"text": t, "d": text_to_path_at_origin(t, target_h=h)}
-        for t, h in BOARD_ID_LINES
-    ]
-    meta = {
-        "variant": "esp32-s3-devkitc-1-v1.1",
-        "source": "Espressif ESP32-S3-DevKitC-1 v1.1 header tables (J1, J3)",
-        "j1_order": J1_SILK,
-        "j3_order": J3_SILK,
-        "note": "Net i (1..22) = J1 pin i; net i+22 (23..44) = J3 pin i. Board orientation: J1 toward side A.",
-        "board_id_silk": {
-            "placement": "above_stem",
-            "note": (
-                "Top silk between J3 row and stem pads (avoids J3 GPIO labels); "
-                "visible when stem is in a breadboard."
-            ),
-            "lines": board_lines,
-        },
-        "paths": paths,
-    }
-    out_devkitc.write_text(json.dumps(meta, indent=1), encoding="utf-8")
-    print(out_devkitc, len(paths), "unique DevKitC strings")
+    silk_dir = _REPO_ROOT / "out" / "intermediate" / "silk"
+    silk_dir.mkdir(parents=True, exist_ok=True)
+    out_num = silk_dir / "numeric_silk_paths.json"
 
-    numeric_paths = {str(i): text_to_path_at_origin(str(i)) for i in range(1, 45)}
-    out_num = root / "numeric_silk_paths.json"
-    meta_n = {
-        "variant": "numeric-1-44",
-        "note": "Silk shows logical pin index 1–44 (same as copper net labels). Not board-vendor-specific.",
-        "paths": numeric_paths,
-    }
-    out_num.write_text(json.dumps(meta_n, indent=1), encoding="utf-8")
-    print(out_num, len(numeric_paths), "numeric strings")
+    if args.numeric_only:
+        write_numeric_silk_json(out_num, max_pin=args.max_pin)
+        print(out_num.resolve())
+        return
+
+    if args.board:
+        path = boards_dir(_REPO_ROOT) / f"{args.board}.toml"
+        if not path.is_file():
+            print(f"Board profile not found: {path}", file=sys.stderr)
+            raise SystemExit(1)
+        p = bake_gpio_from_board_toml(path, silk_dir)
+        print(p.resolve(), "GPIO silk")
+        write_numeric_silk_json(out_num, max_pin=args.max_pin)
+        print(out_num.resolve(), "numeric")
+        return
+
+    if args.all:
+        write_numeric_silk_json(out_num, max_pin=args.max_pin)
+        print(out_num.resolve(), "numeric")
+        for path in iter_board_tomls_with_silk_bake(boards_dir(_REPO_ROOT)):
+            p = bake_gpio_from_board_toml(path, silk_dir)
+            print(p.resolve(), f"from {path.name}")
+        return
+
+    # Default: same as --all (numeric + every [silk_bake] board).
+    write_numeric_silk_json(out_num, max_pin=args.max_pin)
+    print(out_num.resolve(), "numeric")
+    for path in iter_board_tomls_with_silk_bake(boards_dir(_REPO_ROOT)):
+        p = bake_gpio_from_board_toml(path, silk_dir)
+        print(p.resolve(), f"from {path.name}")
 
 
 if __name__ == "__main__":

@@ -40,6 +40,8 @@ class BoardProfile:
     n_rows_bottom: int
     omit_row_b_gap_adjacent: bool
     silk_profile: str | None
+    # Filename under out/intermediate/silk/ for devkitc1-style GPIO silk JSON (from [silk_bake].output).
+    silk_gpio_paths_json: str | None
     branding: BoardBranding | None
     source_path: Path | None
 
@@ -109,6 +111,13 @@ def load_board_profile(path: Path) -> BoardProfile:
                 font_style=fst,
             )
 
+    silk_gpio_paths_json: str | None = None
+    sb = data.get("silk_bake")
+    if isinstance(sb, dict):
+        out = sb.get("output")
+        if out is not None and str(out).strip():
+            silk_gpio_paths_json = str(out).strip()
+
     return BoardProfile(
         id=str(data["id"]),
         title=str(data.get("title", data["id"])),
@@ -119,6 +128,7 @@ def load_board_profile(path: Path) -> BoardProfile:
         n_rows_bottom=int(geom.get("n_rows_bottom", data.get("n_rows_bottom", 4))),
         omit_row_b_gap_adjacent=bool(geom.get("omit_row_b_gap_adjacent", False)),
         silk_profile=data.get("silk_profile"),
+        silk_gpio_paths_json=silk_gpio_paths_json,
         branding=branding,
         source_path=path.resolve(),
     )

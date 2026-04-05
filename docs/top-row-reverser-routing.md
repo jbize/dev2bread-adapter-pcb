@@ -95,4 +95,5 @@ There are **n − 1** gap sites **G₀ … Gₙ₋₂** (**Gₖ** = between **co
 - `scripts/row_reverser_svg.py` — preview SVG in **mil** (`--columns N`): 0.1″ pitch, PTH/via scale from `adapter_gen.geometry`; **`i ≤ n−3`** red **horizontal** **to** **`P_{n−2}→V_{n−2}`** (**J6** cyan), inner **`y = y_v(i+1)`**; **`i = n−2`** one diagonal; vertical stack `dy = 2×via_r + trace_gap` or `--max-y-span`; cyan diagonals. Default `out/preview/row-reverser-<N>.svg`.
 - `docs/dev2bread-adapter-pcb.md` — adapter terminology and geometry constants.
 - `adapter_gen/geometry.py` — **`head_column_x_mil`**, **`wide_head_y_rows_mil`**.
-- `adapter_gen/svg_preview.py` — full-board SVG: same geometry via **`compute_row_reverser_geometry_mil`**, **`y_pad`** = innermost row-A row (bottom of the top socket stack).
+- `adapter_gen/svg_preview.py` — full-board SVG via **`adapter_gen/row_reverser_emit.append_row_reverser_svg`** (same geometry as EasyEDA **TRACK**s from **`append_row_reverser_easyeda_shapes`**).
+- `scripts/generate_easyeda_adapter_pcb.py` — Standard JSON includes Top/Bottom **TRACK** segments unless **`--no-row-reverser`**, and **VIA** primitives at each routing pass-through center (same positions as the preview crosses).

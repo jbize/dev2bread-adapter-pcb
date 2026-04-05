@@ -18,11 +18,7 @@ from adapter_gen.geometry import (
     board_outline_svg_path_d,
     bounds_mil,
 )
-from adapter_gen.row_reverser_geometry import (
-    compute_row_reverser_geometry_mil,
-    polyline_points_attr,
-    row_reverser_y_pad_row_a_innermost_mil,
-)
+from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
     load_silk_label_data,
@@ -48,6 +44,7 @@ def emit_board_svg(
     silk_dir: Path | None = None,
     branding: BoardBranding | None = None,
     row_reverser: bool = False,
+    silk_gpio_paths_json: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     min_x, min_y, max_x, max_y = bounds_mil(p)
@@ -121,99 +118,16 @@ def emit_board_svg(
         )
 
     if row_reverser:
-        y_pad = row_reverser_y_pad_row_a_innermost_mil(p)
-        geom = compute_row_reverser_geometry_mil(p, y_pad_row=y_pad)
-        if geom is not None:
-            tw = f"{geom.trace_stroke:.1f}"
-            g_rr = _sub(svg, "g", {"id": "row-reverser"})
-            g_in = _sub(
-                g_rr,
-                "g",
-                {
-                    "id": "row-reverser-inner",
-                    "fill": "none",
-                    "stroke": "#cc3333",
-                    "stroke-width": tw,
-                    "stroke-linecap": "round",
-                    "stroke-linejoin": "round",
-                },
-            )
-            for seg in geom.red:
-                _sub(
-                    g_in,
-                    "polyline",
-                    {"points": polyline_points_attr(seg)},
-                )
-            g_out = _sub(
-                g_rr,
-                "g",
-                {
-                    "id": "row-reverser-outer",
-                    "fill": "none",
-                    "stroke": "#5599dd",
-                    "stroke-width": tw,
-                    "stroke-linecap": "round",
-                    "stroke-linejoin": "round",
-                },
-            )
-            for seg in geom.cyan:
-                _sub(
-                    g_out,
-                    "polyline",
-                    {"points": polyline_points_attr(seg)},
-                )
-            vx = geom.via_cross_arm
-            vr = f"{geom.via_r:.2f}"
-            g_v = _sub(
-                g_rr,
-                "g",
-                {
-                    "id": "row-reverser-vias",
-                    "fill": "#2a6644",
-                    "stroke": "#88cc88",
-                    "stroke-width": "1.5",
-                    "stroke-linecap": "round",
-                },
-            )
-            for vx_m, vy_m in geom.vias:
-                g_one = _sub(
-                    g_v,
-                    "g",
-                    {
-                        "transform": f"translate({vx_m:.2f},{vy_m:.2f})",
-                    },
-                )
-                _sub(g_one, "circle", {"r": vr})
-                _sub(
-                    g_one,
-                    "line",
-                    {
-                        "x1": f"{-vx:.2f}",
-                        "y1": "0",
-                        "x2": f"{vx:.2f}",
-                        "y2": "0",
-                        "stroke": "#eef6ee",
-                        "stroke-width": f"{max(0.8, geom.via_r * 0.12):.2f}",
-                    },
-                )
-                _sub(
-                    g_one,
-                    "line",
-                    {
-                        "x1": "0",
-                        "y1": f"{-vx:.2f}",
-                        "x2": "0",
-                        "y2": f"{vx:.2f}",
-                        "stroke": "#eef6ee",
-                        "stroke-width": f"{max(0.8, geom.via_r * 0.12):.2f}",
-                    },
-                )
+        append_row_reverser_svg(svg, p, _sub)
 
     if silk_mode and silk_mode != "none":
         sd = (silk_dir or _DEFAULT_SILK_DIR).resolve()
         try:
             paths_map, j1, j3, board_lines = load_silk_label_data(
-                sd, silk_mode, p
+                sd,
+                silk_mode,
+                p,
+                silk_gpio_paths_json=silk_gpio_paths_json,
             )
             ds = silk_path_elements_mil(
                 p,

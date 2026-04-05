@@ -7,10 +7,12 @@ This repository holds the **EasyEDA Standard** generator, documentation, and **s
 ## Quick start
 
 ```bash
-./scripts/bake_devkitc_gpio_silk_paths.py         # once: uses .venv automatically if matplotlib is missing on system Python
+./scripts/bake_devkitc_gpio_silk_paths.py --all   # numeric silk + GPIO silk for each board TOML with [silk_bake]
 ./scripts/generate_easyeda_adapter_pcb.py --board esp32-s3-devkitc-1 --silk-labels devkitc1
 ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1
 ```
+
+Bake uses **`.venv`** automatically if system Python lacks **matplotlib**. Per-board vendor labels are defined under **`[silk_bake]`** in **`resources/boards/<name>.toml`** (`output`, `j1_labels`, `j3_labels`, …). Use **`--board NAME`** to bake one profile, **`--numeric-only`** for logical 1…N only.
 
 Scripts are executable and use `#!/usr/bin/env python3`. Import `out/easyeda/<board>.*.standard.json` (e.g. `esp32-s3-devkitc-1.devkitc1.standard.json`) in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then export Gerbers for your fab. Omit **`--board`** to keep the legacy default filenames (`easyeda-adapter-44pin-dev2bread.*`).
 
@@ -22,13 +24,13 @@ Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)** 
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/generate_easyeda_adapter_pcb.py` | Emit EasyEDA Standard PCB JSON (copper, outline, silk). |
-| `scripts/bake_devkitc_gpio_silk_paths.py` | Regenerate silk path JSON (needs Python venv + **matplotlib**). |
+| `scripts/generate_easyeda_adapter_pcb.py` | Emit EasyEDA Standard PCB JSON (outline, pads, row-reverser Top/Bottom **TRACK**s, silk, branding). Use **`--no-row-reverser`** to omit reverser copper. |
+| `scripts/bake_devkitc_gpio_silk_paths.py` | Regenerate **`numeric_silk_paths.json`** and GPIO silk JSON from **`[silk_bake]`** in board TOMLs (needs **matplotlib**). |
 | `scripts/preview_adapter_board.py` | Board outline, holes, optional silk overlay, optional branding (SVG). |
 
 ### SVG preview (`preview_adapter_board.py`)
 
-Run from the repo root. Silk JSON must exist under **`out/intermediate/silk/`** (run **`scripts/bake_devkitc_gpio_silk_paths.py`** once first). Branding uses the board TOML **`[branding]`** block and needs **matplotlib** (the script may use **`.venv`** automatically, same idea as the bake script). Omit **`--no-branding`** to include branding.
+Run from the repo root. Silk JSON must exist under **`out/intermediate/silk/`** (run **`./scripts/bake_devkitc_gpio_silk_paths.py --all`** once, or **`--board <name>`** for a single profile). Branding uses the board TOML **`[branding]`** block and needs **matplotlib** (the script may use **`.venv`** automatically, same idea as the bake script). Omit **`--no-branding`** to include branding.
 
 | What you want | Command |
 |-----------------|---------|

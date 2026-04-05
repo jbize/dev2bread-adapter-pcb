@@ -22,6 +22,7 @@ from adapter_gen.geometry import (
     stem_silk_x_mil_left_column,
     stem_silk_x_mil_right_column,
 )
+from adapter_gen.silk_bake import default_devkitc1_gpio_json_name
 
 # Head silk: rotate baked horizontal glyphs so label width runs along +Y (column direction),
 # avoiding overlap along the row. CCW in file space (y-down); -90° maps +X extent toward +Y.
@@ -94,11 +95,14 @@ def load_silk_label_data(
     silk_dir: Path,
     mode: str,
     p: BoardParams,
+    *,
+    silk_gpio_paths_json: str | None = None,
 ) -> tuple[dict[str, str], list[str], list[str], list[dict[str, str]] | None]:
     """Return paths map, j1 labels, j3 labels, optional board_id line dicts."""
     nc = p.num_cols
     if mode == "devkitc1":
-        path = silk_dir / "devkitc1_gpio_silk_paths.json"
+        name = silk_gpio_paths_json or default_devkitc1_gpio_json_name()
+        path = silk_dir / name
         raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
         paths_map: dict[str, str] = raw["paths"]
         j1: list[str] = list(raw["j1_order"][:nc])

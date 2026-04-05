@@ -9,18 +9,18 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
   * **Stem (breadboard end):** The narrow **T-stem** — same idea as a mushroom/wine-glass stem or
     (informally) a guitar **neck**. Rotated **90°** in the PCB vs the head; 22-pin direction **+Y**,
     straddle along **+X** (~0.5"). Placed **below** the head, centered (T shape).
-  * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
+    * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
     column (breadboard-style depth) — solder headers in **one** row only to match different
-    dev-board widths. **TopLayer copper routing between pads is not emitted** (outline + drills +
-    silk + branding only). Top-row row-reverser geometry for hand routing is in
-    ``adapter_gen/row_reverser_geometry.py`` and ``docs/top-row-reverser-routing.md``; SVG previews
-    draw it with ``emit_board_svg(..., row_reverser=True)`` for whatever pin count you build.
+    dev-board widths. **Row-reverser** Top/Bottom **TRACK** segments (same geometry as SVG preview)
+    come from ``adapter_gen/row_reverser_emit.py`` unless ``--no-row-reverser``. Stem Manhattan
+    routing between head and breadboard is still **not** auto-routed here.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
     or generic **1–44** (`--silk-labels numeric`,
     `out/intermediate/silk/numeric_silk_paths.json`). Re-bake paths with
-    `scripts/bake_devkitc_gpio_silk_paths.py` (writes under `out/intermediate/silk/`; not committed).
+    `scripts/bake_devkitc_gpio_silk_paths.py` (reads `[silk_bake]` from
+    `resources/boards/*.toml`; writes under `out/intermediate/silk/`; not committed).
 
 Two formats exist:
   * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
@@ -75,6 +75,7 @@ try:
         stem_pin_y_mil,
         wide_head_y_rows_mil,
     )
+    from adapter_gen.row_reverser_emit import append_row_reverser_easyeda_shapes
     from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
 except ImportError as e:
     print(
@@ -268,10 +269,13 @@ def build_standard_compressed(
     silk_pin1: bool = True,
     silk_labels: str = "devkitc1",
     branding: BoardBranding | None = None,
+    silk_gpio_paths_json: str | None = None,
+    row_reverser: bool = True,
 ) -> dict:
     """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings).
 
     ``bp`` must match ``resolve_board_params`` / preview SVG (``adapter_gen.geometry``).
+    Row-reverser tracks use the same geometry as ``append_row_reverser_svg`` / ``emit_board_svg``.
     """
     if silk_labels not in ("none", "devkitc1", "numeric"):
         raise ValueError(f"invalid silk_labels: {silk_labels!r}")
@@ -338,6 +342,9 @@ def build_standard_compressed(
             f"PAD~ELLIPSE~{x_rn_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
         )
 
+    if row_reverser:
+        append_row_reverser_easyeda_shapes(shapes, nid, p=bp, mil_to_u=mil_to_u)
+
     if silk_pin1:
         sw = max(mil_to_u(5.0), 0.5)
         for cx, cy, r in _silk_pin1_circles_mil(bp):
@@ -346,7 +353,10 @@ def build_standard_compressed(
             )
 
     if silk_labels == "devkitc1":
-        data_path = _intermediate_silk_dir() / "devkitc1_gpio_silk_paths.json"
+        from adapter_gen.silk_bake import default_devkitc1_gpio_json_name
+
+        gpio_name = silk_gpio_paths_json or default_devkitc1_gpio_json_name()
+        data_path = _intermediate_silk_dir() / gpio_name
         if not data_path.is_file():
             print(
                 f"Warning: {data_path} missing — run scripts/bake_devkitc_gpio_silk_paths.py "
@@ -356,15 +366,18 @@ def build_standard_compressed(
         else:
             raw = json.loads(data_path.read_text(encoding="utf-8"))
             paths_map: dict[str, str] = raw["paths"]
-            j1: list[str] = raw["j1_order"]
-            j3: list[str] = raw["j3_order"]
-            if bp.num_cols != 22 or len(j1) != 22 or len(j3) != 22:
+            j1_full: list[str] = raw["j1_order"]
+            j3_full: list[str] = raw["j3_order"]
+            nc = bp.num_cols
+            if len(j1_full) < nc or len(j3_full) < nc:
                 print(
-                    "Warning: devkitc1 silk is baked for 22 columns (44-pin class); "
-                    "use --silk-labels numeric for other pin counts. Skipping silk text.",
+                    "Warning: devkitc1 silk JSON has fewer labels than adapter columns; "
+                    "use --silk-labels numeric or rebake silk. Skipping silk text.",
                     file=sys.stderr,
                 )
             else:
+                j1 = j1_full[:nc]
+                j3 = j3_full[:nc]
                 _append_labeled_silk(
                     shapes,
                     nid,
@@ -491,7 +504,8 @@ def build_legacy_expanded() -> dict:
     """Legacy expanded object graph with full copper routing (Standard applySource).
 
     Not for EasyEDA Pro File Source. **Scheduled for removal** once the new router exists;
-    default Standard JSON no longer emits TopLayer tracks (see ``build_standard_compressed``).
+    default Standard JSON uses ``build_standard_compressed`` (row-reverser Top/Bottom TRACKs;
+    no stem routing).
     """
 
     gid = 0
@@ -882,6 +896,8 @@ def _write_standard(
     *,
     bp: BoardParams,
     branding: BoardBranding | None,
+    silk_gpio_paths_json: str | None = None,
+    row_reverser: bool = True,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
@@ -894,6 +910,8 @@ def _write_standard(
                 silk_pin1=not args.no_silk_pin1,
                 silk_labels=args.silk_labels,
                 branding=branding,
+                silk_gpio_paths_json=silk_gpio_paths_json,
+                row_reverser=row_reverser,
             ),
             f,
             indent=1,
@@ -921,6 +939,11 @@ def main() -> None:
         "--no-silk-pin1",
         action="store_true",
         help="Omit Top Silk circles marking pin 1 (wide + stem).",
+    )
+    p.add_argument(
+        "--no-row-reverser",
+        action="store_true",
+        help="Omit row-reverser Top/Bottom copper TRACKs (same sketch as SVG preview).",
     )
     p.add_argument(
         "--silk-labels",
@@ -1050,6 +1073,7 @@ def main() -> None:
             rows_bottom=args.rows_bottom,
             omit_row_b_gap_adjacent=args.omit_row_b_gap_adjacent,
         )
+        silk_gpio_paths_json = None
     else:
         bp = resolve_board_params(
             profile,
@@ -1058,17 +1082,34 @@ def main() -> None:
             rows_bottom=args.rows_bottom,
             omit_row_b_gap_adjacent=args.omit_row_b_gap_adjacent,
         )
+        silk_gpio_paths_json = profile.silk_gpio_paths_json
+
+    row_reverser = not args.no_row_reverser
 
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
             args.silk_labels = variant
             outp = _default_standard_path(repo, variant, board_stem=board_stem)
-            _write_standard(outp, args, bp=bp, branding=branding)
+            _write_standard(
+                outp,
+                args,
+                bp=bp,
+                branding=branding,
+                silk_gpio_paths_json=silk_gpio_paths_json,
+                row_reverser=row_reverser,
+            )
     else:
         out = args.output or _default_standard_path(
             repo, args.silk_labels, board_stem=board_stem
         )
-        _write_standard(out, args, bp=bp, branding=branding)
+        _write_standard(
+            out,
+            args,
+            bp=bp,
+            branding=branding,
+            silk_gpio_paths_json=silk_gpio_paths_json,
+            row_reverser=row_reverser,
+        )
 
     if args.legacy_expanded:
         leg_path = _legacy_expanded_pcb_path(repo, board_stem)

@@ -77,12 +77,12 @@ In **EasyEDA Pro**, use the JSON **only** to **import** the design, run the **ch
 | Script | Role |
 |--------|------|
 | **`scripts/generate_easyeda_adapter_pcb.py`** | Builds the **EasyEDA Standard** PCB JSON (copper, outline, silk). Run this whenever you change geometry or silk mode. |
-| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`out/intermediate/silk/*.json`** (needs a **venv** + **matplotlib**). Re-run when fonts or label tables change. |
+| **`scripts/bake_devkitc_gpio_silk_paths.py`** | **Required before `devkitc1` / `numeric` silk:** writes **`numeric_silk_paths.json`** and per-board GPIO JSON from **`[silk_bake]`** in **`resources/boards/*.toml`** (needs **matplotlib**). Default **`--all`**; **`--board NAME`** for one profile. Re-run when labels or fonts change. |
 | **`scripts/preview_adapter_board.py`** | **SVG preview** only (outline, holes, optional silk vectors, optional branding). Same baked silk JSON as the generator; branding needs matplotlib. |
 
 ### SVG preview (silks and branding)
 
-Use **`./scripts/preview_adapter_board.py`** from the repo root. Bake silk first (**`scripts/bake_devkitc_gpio_silk_paths.py`**). Branding comes from the board TOML **`[branding]`** block unless you pass **`--no-branding`**.
+Use **`./scripts/preview_adapter_board.py`** from the repo root. Bake silk first (**`./scripts/bake_devkitc_gpio_silk_paths.py --all`**). Branding comes from the board TOML **`[branding]`** block unless you pass **`--no-branding`**.
 
 Examples for **`--board esp32-s3-devkitc-1`**:
 
@@ -115,7 +115,7 @@ Use **`-o PATH`** to override the output file. **`--all-variants`** writes both 
 
 - **Silk (pin 1):** Two small **open circles** on Top Silk marking **pin 1** (wide head row A, stem). Omit with **`--no-silk-pin1`**.
 - **Per-pin silk text:** **88** Top Silk `TEXT` objects for `numeric` (two rows × 22 on the head + two columns × 22 on the stem). **`devkitc1` adds two more** **above the stem** (below the J3 GPIO row, not over those labels): **ESP32-S3-DevKitC-1** and **v1.1 · J1/J3** — **90** `TEXT` total. For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
-- Vector paths: `out/intermediate/silk/devkitc1_gpio_silk_paths.json` and `out/intermediate/silk/numeric_silk_paths.json` (from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
+- Vector paths: **`numeric_silk_paths.json`** plus one GPIO file per board profile with **`[silk_bake]`** (e.g. **`devkitc1_gpio_silk_paths.json`** for the DevKitC profile — from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
 - **Stronger board / more FR4:** `--margin-mil`, `--stem-outline-margin-mil`, `--head-outline-extra-mil`.
 - Optional legacy expanded JSON: `--legacy-expanded`
 
