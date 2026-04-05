@@ -28,12 +28,21 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from adapter_gen.board_profile import (  # noqa: E402
-    boards_dir,
-    load_board_profile,
-    resolve_board_params,
-)
-from adapter_gen.svg_preview import emit_board_svg  # noqa: E402
+try:
+    from adapter_gen.board_profile import (  # noqa: E402
+        boards_dir,
+        load_board_profile,
+        resolve_board_params,
+    )
+    from adapter_gen.svg_preview import emit_board_svg  # noqa: E402
+except ImportError as e:
+    print(
+        "Cannot import adapter_gen — run from the repository root.\n"
+        f"  Expected: {_ROOT / 'adapter_gen'}\n"
+        f"  ImportError: {e}\n",
+        file=sys.stderr,
+    )
+    raise SystemExit(1) from e
 
 
 def main() -> None:

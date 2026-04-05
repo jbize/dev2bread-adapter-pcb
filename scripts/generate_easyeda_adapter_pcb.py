@@ -46,8 +46,21 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from adapter_gen.board_profile import boards_dir
-from adapter_gen.geometry import BOARD_CORNER_RADIUS_MIL, BoardParams, board_outline_polyline_mil
+try:
+    from adapter_gen.board_profile import boards_dir
+    from adapter_gen.geometry import (
+        BOARD_CORNER_RADIUS_MIL,
+        BoardParams,
+        board_outline_polyline_mil,
+    )
+except ImportError as e:
+    print(
+        "Cannot import adapter_gen — run from the repository root.\n"
+        f"  Expected: {_ROOT / 'adapter_gen'}\n"
+        f"  ImportError: {e}\n",
+        file=sys.stderr,
+    )
+    raise SystemExit(1) from e
 
 # --- Mechanical (mil) ---
 PITCH = 100  # 0.1" (2.54 mm)

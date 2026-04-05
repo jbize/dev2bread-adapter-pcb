@@ -91,7 +91,7 @@ Use this when you have not touched the repo for a while or a new session needs f
 ### Regeneration (typical)
 
 ```bash
-# From repo root. Bake needs matplotlib — use `.venv/bin/python scripts/bake_...` if system Python has no matplotlib.
+# From repo root. Bake re-launches with `.venv/bin/python` when matplotlib is missing on `python3`.
 ./scripts/bake_devkitc_gpio_silk_paths.py
 ./scripts/generate_easyeda_adapter_pcb.py --board esp32-s3-devkitc-1 --silk-labels devkitc1
 ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1

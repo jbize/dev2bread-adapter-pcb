@@ -7,7 +7,7 @@ This repository holds the **EasyEDA Standard** generator, documentation, and **s
 ## Quick start
 
 ```bash
-./scripts/bake_devkitc_gpio_silk_paths.py         # once: needs matplotlib (use .venv/bin/python if system Python lacks it)
+./scripts/bake_devkitc_gpio_silk_paths.py         # once: uses .venv automatically if matplotlib is missing on system Python
 ./scripts/generate_easyeda_adapter_pcb.py --board esp32-s3-devkitc-1 --silk-labels devkitc1
 ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1
 ```
