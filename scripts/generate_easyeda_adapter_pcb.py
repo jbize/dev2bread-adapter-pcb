@@ -10,11 +10,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     (informally) a guitar **neck**. Rotated **90°** in the PCB vs the head; 22-pin direction **+Y**,
     straddle along **+X** (~0.5"). Placed **below** the head, centered (T shape).
   * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
-    column (breadboard-style depth), all **shorted on the same net** — solder headers in **one**
-    row only to match different dev-board widths.
-  * **Routing:** Short vertical links between the four wide pads per net, then one Manhattan path
-    from the **innermost** wide pad to the stem pad, with a jog so routes in the gap avoid the other
-    column’s pads at the same X.
+    column (breadboard-style depth) — solder headers in **one** row only to match different
+    dev-board widths. **TopLayer copper routing between pads is not emitted** (outline + drills +
+    silk + branding only); a new router will replace the old behavior.
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
@@ -51,14 +49,29 @@ from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
 ensure_matplotlib()
 
 try:
-    from adapter_gen.board_profile import BoardBranding, boards_dir, load_board_profile
+    from adapter_gen.board_profile import (
+        BoardBranding,
+        boards_dir,
+        load_board_profile,
+        resolve_board_params,
+    )
     from adapter_gen.branding import append_branding_easyeda_shapes
     from adapter_gen.geometry import (
         BOARD_CORNER_RADIUS_MIL,
         BoardParams,
+        HEAD_OUTLINE_EXTRA,
+        HOLE_R,
+        MARGIN,
+        PAD_SIZE,
         SILK_OFF_HEAD_MIL,
         SILK_VERTICAL_HALF_EXTENT_MIL,
+        STEM_OUTLINE_MARGIN,
+        Y_W_ROW_A,
         board_outline_polyline_mil,
+        head_column_x_mil,
+        stem_layout_mil,
+        stem_pin_y_mil,
+        wide_head_y_rows_mil,
     )
     from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
 except ImportError as e:
@@ -70,106 +83,18 @@ except ImportError as e:
     )
     raise SystemExit(1) from e
 
-# --- Mechanical (mil) ---
-PITCH = 100  # 0.1" (2.54 mm)
-# Breadboard side: 12.7 mm = 0.5" between rows (common on reference adapters; 300 mil = 0.3" if you prefer)
-NARROW_ROW_GAP = 500
-WIDE_ROW_GAP = 1100  # ~27.9 mm / 1.1" ESP32-S3-DevKitC-1 class boards
-NECK_GAP = 500  # gap below wide rows before the stem pad block starts (along +Y)
-NUM_PINS_PER_ROW = 22
-# Per column on the wide head: holes stepping toward the center gap (0.1" pitch), same as one
-# dimension of a breadboard tie strip — pick **one** row to solder; all four pads are one net.
-WIDE_HEAD_DEPTH_HOLES = 4
-
-# Layout (mil): +Y downward.
-X0 = 400
-# Wide head (ESP32): rows parallel to +X
-Y_W_ROW_A = 280  # nets 1–22
-Y_W_ROW_B = Y_W_ROW_A + WIDE_ROW_GAP  # nets 23–44
-# Narrow stem: pads at stem_layout_mil() — rows parallel to +Y, straddle along +X
-
-PAD_SIZE = 55
-HOLE_R = 20
+# Legacy expanded JSON only (copper routing). Geometry + pads use adapter_gen.geometry.
 TRACK_WIDTH = 24
 OUTLINE_STROKE = 5
-
-MARGIN = 150
-HEAD_OUTLINE_EXTRA = 160
-STEM_OUTLINE_MARGIN = 130  # outline around narrow columns (beyond pad centers)
-# Jog (mil) before long vertical leg so wide-row-A routes miss wide-row-B pads (same column).
 ROUTE_JOG_MIL = 40
+
+# Full 44-pin / 4-deep layout for ``build_legacy_expanded`` until that path is removed.
+_LEGACY_BP = BoardParams(n_pins=44, n_rows_top=4, n_rows_bottom=4)
 
 
 def mil_to_u(m: float) -> float:
     """EasyEDA PCB file uses 0.1 mil granularity (doc: stroke 1 = 10 mil)."""
     return m / 10.0
-
-
-def stem_layout_mil() -> tuple[float, float, float, float]:
-    """Center of head, left/right narrow column centers (straddle), top Y of stem pad i=0."""
-    xc = X0 + (NUM_PINS_PER_ROW - 1) * PITCH / 2.0
-    x_ln = xc - NARROW_ROW_GAP / 2.0
-    x_rn = xc + NARROW_ROW_GAP / 2.0
-    y_stem_top = Y_W_ROW_B + NECK_GAP
-    return xc, x_ln, x_rn, y_stem_top
-
-
-def stem_pin_y_mil(i: int) -> float:
-    """Y center for stem pin index i (0..21), narrow columns (nets 1–22 / 23–44)."""
-    _, _, _, y0 = stem_layout_mil()
-    return y0 + i * PITCH
-
-
-def head_column_x_mil(i: int) -> float:
-    """X center (mil) for wide-head column index i (0..21). Nets 1…22 / 23…44 use the same i.
-
-    Pin 1 of each header sits at the **high-X** end of the row so a DevKitC-1 mates component-side
-    up with silk readable from above (Espressif J1/J3 pin 1 toward the neck / inner edge of the T).
-    """
-    return X0 + (NUM_PINS_PER_ROW - 1 - i) * PITCH
-
-
-def wide_head_y_positions_mil(*, side_a: bool) -> list[float]:
-    """Y centers for the 4 breadboard-depth holes toward the trench (side A from Y_W_ROW_A down)."""
-    n = WIDE_HEAD_DEPTH_HOLES
-    if side_a:
-        return [Y_W_ROW_A + k * PITCH for k in range(n)]
-    return [Y_W_ROW_B - k * PITCH for k in range(n)]
-
-
-def _board_outline_polygon_mil(
-    *,
-    margin_mil: float = MARGIN,
-    head_outline_extra_mil: float = HEAD_OUTLINE_EXTRA,
-    stem_outline_margin_mil: float = STEM_OUTLINE_MARGIN,
-) -> list[tuple[float, float]]:
-    """T outline: wide head, narrow stem centered under head (reference adapter shape)."""
-    _, x_ln, x_rn, y_stem_top = stem_layout_mil()
-    x_left = X0 - margin_mil
-    x_right = X0 + (NUM_PINS_PER_ROW - 1) * PITCH + margin_mil
-    x_head_l = x_left - head_outline_extra_mil
-    x_head_r = x_right + head_outline_extra_mil
-    x_stem_l = x_ln - stem_outline_margin_mil
-    x_stem_r = x_rn + stem_outline_margin_mil
-    # Keep in sync with adapter_gen.geometry.board_outline_polygon_mil (vertical head silk).
-    y_top = (
-        Y_W_ROW_A
-        - SILK_OFF_HEAD_MIL
-        - SILK_VERTICAL_HALF_EXTENT_MIL
-        - margin_mil
-    )
-    y_bot = stem_pin_y_mil(NUM_PINS_PER_ROW - 1) + margin_mil
-    y_neck = y_stem_top - 50  # step inward just above stem
-    return [
-        (x_head_l, y_top),
-        (x_head_r, y_top),
-        (x_head_r, y_neck),
-        (x_stem_r, y_neck),
-        (x_stem_r, y_bot),
-        (x_stem_l, y_bot),
-        (x_stem_l, y_neck),
-        (x_head_l, y_neck),
-    ]
 
 
 def _repo_root() -> Path:
@@ -213,11 +138,11 @@ def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
     return " ".join(out)
 
 
-def _above_stem_board_id_center_mil() -> tuple[float, float]:
+def _above_stem_board_id_center_mil(bp: BoardParams) -> tuple[float, float]:
     """Center for board-ID silk: below J3 row labels, above stem pads (same X as stem)."""
-    xc, _, _, y_stem_top = stem_layout_mil()
+    xc, _, _, y_stem_top = stem_layout_mil(bp)
     pad_half = PAD_SIZE / 2.0
-    # J3 per-pin silk sits near Y_W_ROW_B + off_head (~1442 mil); keep ID lower in the throat.
+    # J3 per-pin silk sits near row B + off_head; keep ID lower in the throat.
     # ~120 mil above stem pad row centers clears two larger lines without overlapping stem pads.
     y_mid = y_stem_top - pad_half - 120.0
     return xc, y_mid
@@ -228,11 +153,12 @@ def _append_devkitc_board_id_silk(
     nid: Callable[[], str],
     *,
     lines: list[dict[str, str]],
+    bp: BoardParams,
 ) -> None:
     """Two-line kit label between J3 row and stem (visible when stem is in a breadboard)."""
     if not lines:
         return
-    cx_mil, y_mid_mil = _above_stem_board_id_center_mil()
+    cx_mil, y_mid_mil = _above_stem_board_id_center_mil(bp)
     cx = mil_to_u(cx_mil)
     # Stack lines: index 0 above center, index 1 below (reading top-to-bottom on the PCB +Y down).
     n = len(lines)
@@ -258,13 +184,15 @@ def _append_labeled_silk(
     j1: list[str],
     j3: list[str],
     vertical_head: bool = False,
+    bp: BoardParams,
 ) -> None:
-    """Top silk at wide head + stem using parallel label lists (length 22 each).
+    """Top silk at wide head + stem using parallel label lists (length ``bp.num_cols`` each).
 
     When ``vertical_head`` is True (devkitc1), head labels are rotated so they do not
     overlap along the row; stem labels stay horizontal.
     """
-    xc, x_ln, x_rn, _ = stem_layout_mil()
+    xc, x_ln, x_rn, _ = stem_layout_mil(bp)
+    y_row_b = bp.y_row_b
     off_head = float(SILK_OFF_HEAD_MIL)
     # Stem silk in the straddle gap (between pad columns and center), not outside the stem.
     cx_stem_left = mil_to_u((x_ln + xc) / 2.0)
@@ -276,46 +204,47 @@ def _append_labeled_silk(
             d0 = rotate_silk_path_d(d0, HEAD_SILK_ROTATE_DEG)
         return d0
 
-    for i in range(NUM_PINS_PER_ROW):
+    for i in range(bp.num_cols):
         lab = j1[i]
         d0 = _head_d(lab)
-        cx = mil_to_u(head_column_x_mil(i))
+        cx = mil_to_u(head_column_x_mil(i, bp))
         cy = mil_to_u(Y_W_ROW_A - off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
         shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
-    for i in range(NUM_PINS_PER_ROW):
+    for i in range(bp.num_cols):
         lab = j3[i]
         d0 = _head_d(lab)
-        cx = mil_to_u(head_column_x_mil(i))
-        cy = mil_to_u(Y_W_ROW_B + off_head)
+        cx = mil_to_u(head_column_x_mil(i, bp))
+        cy = mil_to_u(y_row_b + off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
         shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
-    for i in range(NUM_PINS_PER_ROW):
+    for i in range(bp.num_cols):
         lab = j1[i]
         d0 = paths_map[lab]
-        cy = mil_to_u(stem_pin_y_mil(i))
+        cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_left, cy)
         shapes.append(f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
-    for i in range(NUM_PINS_PER_ROW):
+    for i in range(bp.num_cols):
         lab = j3[i]
         d0 = paths_map[lab]
-        cy = mil_to_u(stem_pin_y_mil(i))
+        cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_right, cy)
         shapes.append(f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
 
 
-def _numeric_silk_row_labels() -> tuple[list[str], list[str]]:
-    """J1 side = logical 1..22, J3 side = 23..44 (same net numbering as copper)."""
-    j1 = [str(i) for i in range(1, NUM_PINS_PER_ROW + 1)]
-    j3 = [str(i) for i in range(NUM_PINS_PER_ROW + 1, 2 * NUM_PINS_PER_ROW + 1)]
+def _numeric_silk_row_labels(bp: BoardParams) -> tuple[list[str], list[str]]:
+    """J1 side = 1..N, J3 side = N+1..2N (matches pad numbering)."""
+    nc = bp.num_cols
+    j1 = [str(i) for i in range(1, nc + 1)]
+    j3 = [str(i) for i in range(nc + 1, 2 * nc + 1)]
     return j1, j3
 
 
-def _silk_pin1_circles_mil() -> list[tuple[float, float, float]]:
+def _silk_pin1_circles_mil(bp: BoardParams) -> list[tuple[float, float, float]]:
     """Small open circles on Top Silk marking pin 1 (wide row A, stem). (cx, cy, r) in mil."""
-    _, x_ln, _, y_stem_top = stem_layout_mil()
-    ys_a = wide_head_y_positions_mil(side_a=True)
-    x_pad = head_column_x_mil(0)
+    _, x_ln, _, y_stem_top = stem_layout_mil(bp)
+    ys_a = wide_head_y_rows_mil(p=bp, from_row_a=True)
+    x_pad = head_column_x_mil(0, bp)
     y_pad = ys_a[0]
     offset = 48.0
     r = 22.0
@@ -328,6 +257,7 @@ def _silk_pin1_circles_mil() -> list[tuple[float, float, float]]:
 
 def build_standard_compressed(
     *,
+    bp: BoardParams,
     margin_mil: float | None = None,
     stem_outline_margin_mil: float | None = None,
     head_outline_extra_mil: float | None = None,
@@ -335,7 +265,10 @@ def build_standard_compressed(
     silk_labels: str = "devkitc1",
     branding: BoardBranding | None = None,
 ) -> dict:
-    """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings)."""
+    """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings).
+
+    ``bp`` must match ``resolve_board_params`` / preview SVG (``adapter_gen.geometry``).
+    """
     if silk_labels not in ("none", "devkitc1", "numeric"):
         raise ValueError(f"invalid silk_labels: {silk_labels!r}")
 
@@ -352,11 +285,6 @@ def build_standard_compressed(
 
     shapes: list[str] = []
 
-    bp = BoardParams(
-        n_pins=NUM_PINS_PER_ROW * 2,
-        n_rows_top=WIDE_HEAD_DEPTH_HOLES,
-        n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
-    )
     poly_mil = board_outline_polyline_mil(
         bp,
         corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
@@ -370,26 +298,19 @@ def build_standard_compressed(
             f"TRACK~{ow}~10~~{mil_to_u(x1)} {mil_to_u(y1)} {mil_to_u(x2)} {mil_to_u(y2)}~{nid()}~0"
         )
 
-    tw = mil_to_u(TRACK_WIDTH)
-    if tw < 1:
-        tw = 2.0
-
     pw = mil_to_u(PAD_SIZE)
     hr = mil_to_u(HOLE_R)
-    j = mil_to_u(ROUTE_JOG_MIL)
-    _, x_ln, x_rn, _ = stem_layout_mil()
+    _, x_ln, x_rn, _ = stem_layout_mil(bp)
 
     x_ln_u = mil_to_u(x_ln)
     x_rn_u = mil_to_u(x_rn)
 
-    # Wide side A (nets 1–22): 4 pads per column → stem left column
-    for i in range(NUM_PINS_PER_ROW):
-        net = f"NET{i + 1}"
-        x = mil_to_u(head_column_x_mil(i))
-        xj = x - j
-        y_s = mil_to_u(stem_pin_y_mil(i))
+    # Wide side A: PTH pads only (no TopLayer copper between them — router TBD).
+    for i in range(bp.num_cols):
+        x = mil_to_u(head_column_x_mil(i, bp))
+        y_s = mil_to_u(stem_pin_y_mil(i, bp))
         num = str(i + 1)
-        ys_mil = wide_head_y_positions_mil(side_a=True)
+        ys_mil = wide_head_y_rows_mil(p=bp, from_row_a=True)
         for yk in ys_mil:
             shapes.append(
                 f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
@@ -397,25 +318,14 @@ def build_standard_compressed(
         shapes.append(
             f"PAD~ELLIPSE~{x_ln_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
         )
-        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
-            ya_u = mil_to_u(ys_mil[k])
-            yb_u = mil_to_u(ys_mil[k + 1])
-            shapes.append(
-                f"TRACK~{tw}~1~{net}~{x} {ya_u} {x} {yb_u}~{nid()}~0"
-            )
-        y_inner = mil_to_u(ys_mil[-1])
-        shapes.append(
-            f"TRACK~{tw}~1~{net}~{x} {y_inner} {xj} {y_inner} {xj} {y_s} {x_ln_u} {y_s}~{nid()}~0"
-        )
 
-    # Wide side B (nets 23–44): 4 pads per column → stem right column
-    for i in range(NUM_PINS_PER_ROW):
-        net = f"NET{i + 23}"
-        x = mil_to_u(head_column_x_mil(i))
-        xj = x + j
-        y_s = mil_to_u(stem_pin_y_mil(i))
-        num = str(i + 23)
-        ys_mil = wide_head_y_positions_mil(side_a=False)
+    # Wide side B: PTH pads only.
+    nc = bp.num_cols
+    for i in range(nc):
+        x = mil_to_u(head_column_x_mil(i, bp))
+        y_s = mil_to_u(stem_pin_y_mil(i, bp))
+        num = str(i + nc + 1)
+        ys_mil = wide_head_y_rows_mil(p=bp, from_row_a=False)
         for yk in ys_mil:
             shapes.append(
                 f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
@@ -423,20 +333,10 @@ def build_standard_compressed(
         shapes.append(
             f"PAD~ELLIPSE~{x_rn_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
         )
-        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
-            ya_u = mil_to_u(ys_mil[k])
-            yb_u = mil_to_u(ys_mil[k + 1])
-            shapes.append(
-                f"TRACK~{tw}~1~{net}~{x} {ya_u} {x} {yb_u}~{nid()}~0"
-            )
-        y_inner = mil_to_u(ys_mil[-1])
-        shapes.append(
-            f"TRACK~{tw}~1~{net}~{x} {y_inner} {xj} {y_inner} {xj} {y_s} {x_rn_u} {y_s}~{nid()}~0"
-        )
 
     if silk_pin1:
         sw = max(mil_to_u(5.0), 0.5)
-        for cx, cy, r in _silk_pin1_circles_mil():
+        for cx, cy, r in _silk_pin1_circles_mil(bp):
             shapes.append(
                 f"CIRCLE~{mil_to_u(cx)}~{mil_to_u(cy)}~{mil_to_u(r)}~{sw}~3~{nid()}"
             )
@@ -454,8 +354,12 @@ def build_standard_compressed(
             paths_map: dict[str, str] = raw["paths"]
             j1: list[str] = raw["j1_order"]
             j3: list[str] = raw["j3_order"]
-            if len(j1) != NUM_PINS_PER_ROW or len(j3) != NUM_PINS_PER_ROW:
-                print("Warning: DevKitC silk JSON pin count mismatch; skipping.", file=sys.stderr)
+            if bp.num_cols != 22 or len(j1) != 22 or len(j3) != 22:
+                print(
+                    "Warning: devkitc1 silk is baked for 22 columns (44-pin class); "
+                    "use --silk-labels numeric for other pin counts. Skipping silk text.",
+                    file=sys.stderr,
+                )
             else:
                 _append_labeled_silk(
                     shapes,
@@ -464,11 +368,12 @@ def build_standard_compressed(
                     j1=j1,
                     j3=j3,
                     vertical_head=True,
+                    bp=bp,
                 )
                 bid = raw.get("board_id_silk")
                 if isinstance(bid, dict) and isinstance(bid.get("lines"), list):
                     _append_devkitc_board_id_silk(
-                        shapes, nid, lines=bid["lines"]
+                        shapes, nid, lines=bid["lines"], bp=bp
                     )
     elif silk_labels == "numeric":
         data_path = _intermediate_silk_dir() / "numeric_silk_paths.json"
@@ -481,8 +386,15 @@ def build_standard_compressed(
         else:
             raw = json.loads(data_path.read_text(encoding="utf-8"))
             paths_map = raw["paths"]
-            j1, j3 = _numeric_silk_row_labels()
-            _append_labeled_silk(shapes, nid, paths_map=paths_map, j1=j1, j3=j3)
+            j1, j3 = _numeric_silk_row_labels(bp)
+            _append_labeled_silk(
+                shapes,
+                nid,
+                paths_map=paths_map,
+                j1=j1,
+                j3=j3,
+                bp=bp,
+            )
 
     if branding is not None:
         append_branding_easyeda_shapes(
@@ -493,8 +405,8 @@ def build_standard_compressed(
             mil_to_u=mil_to_u,
         )
 
-    xs = [p[0] for p in poly_mil]
-    ys = [p[1] for p in poly_mil]
+    xs = [pt[0] for pt in poly_mil]
+    ys = [pt[1] for pt in poly_mil]
     xa, xb = mil_to_u(min(xs)), mil_to_u(max(xs))
     ya, yd = mil_to_u(min(ys)), mil_to_u(max(ys))
     bx, by, bw, bh = xa, ya, xb - xa, yd - ya
@@ -572,7 +484,11 @@ def build_standard_compressed(
 
 
 def build_legacy_expanded() -> dict:
-    """Legacy expanded object graph (Standard applySource); not for EasyEDA Pro File Source."""
+    """Legacy expanded object graph with full copper routing (Standard applySource).
+
+    Not for EasyEDA Pro File Source. **Scheduled for removal** once the new router exists;
+    default Standard JSON no longer emits TopLayer tracks (see ``build_standard_compressed``).
+    """
 
     gid = 0
 
@@ -588,16 +504,12 @@ def build_legacy_expanded() -> dict:
     signals[""] = []
 
     poly_mil = board_outline_polyline_mil(
-        BoardParams(
-            n_pins=NUM_PINS_PER_ROW * 2,
-            n_rows_top=WIDE_HEAD_DEPTH_HOLES,
-            n_rows_bottom=WIDE_HEAD_DEPTH_HOLES,
-        ),
+        _LEGACY_BP,
         corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
         arc_segments=8,
     )
-    xs = [p[0] for p in poly_mil]
-    ys = [p[1] for p in poly_mil]
+    xs = [pt[0] for pt in poly_mil]
+    ys = [pt[1] for pt in poly_mil]
     x_min, x_max = min(xs), max(xs)
     y_min, y_max = min(ys), max(ys)
     w = x_max - x_min
@@ -630,21 +542,25 @@ def build_legacy_expanded() -> dict:
 
     item_order: list[str] = list(tracks.keys())
 
-    _, x_ln, x_rn, _ = stem_layout_mil()
+    leg = _LEGACY_BP
+    _, x_ln, x_rn, _ = stem_layout_mil(leg)
+    nc = leg.num_cols
+    nra = leg.n_rows_top
+    nrb = leg.n_rows_bottom
 
-    for i in range(NUM_PINS_PER_ROW):
+    for i in range(nc):
         net = f"NET{i + 1}"
-        x = head_column_x_mil(i)
+        x = head_column_x_mil(i, leg)
         xj = x - ROUTE_JOG_MIL
-        ys_stem = stem_pin_y_mil(i)
-        ys_head = wide_head_y_positions_mil(side_a=True)
+        ys_stem = stem_pin_y_mil(i, leg)
+        ys_head = wide_head_y_rows_mil(p=leg, from_row_a=True)
         y_inner = ys_head[-1]
         for yk in ys_head:
             pid = next_id()
             pads[pid] = pad_dict(pid, x, yk, str(i + 1), net)
             add_signal(net, pads[pid], "PAD")
             item_order.append(pid)
-        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+        for k in range(nra - 1):
             lk = next_id()
             tracks[lk] = {
                 "gId": lk,
@@ -677,19 +593,19 @@ def build_legacy_expanded() -> dict:
         add_signal(net, tracks[tr], "TRACK")
         item_order.extend([pw, tr])
 
-    for i in range(NUM_PINS_PER_ROW):
-        net = f"NET{i + 23}"
-        x = head_column_x_mil(i)
+    for i in range(nc):
+        net = f"NET{i + nc + 1}"
+        x = head_column_x_mil(i, leg)
         xj = x + ROUTE_JOG_MIL
-        ys_stem = stem_pin_y_mil(i)
-        ys_head = wide_head_y_positions_mil(side_a=False)
+        ys_stem = stem_pin_y_mil(i, leg)
+        ys_head = wide_head_y_rows_mil(p=leg, from_row_a=False)
         y_inner = ys_head[-1]
         for yk in ys_head:
             pid = next_id()
-            pads[pid] = pad_dict(pid, x, yk, str(i + 23), net)
+            pads[pid] = pad_dict(pid, x, yk, str(i + nc + 1), net)
             add_signal(net, pads[pid], "PAD")
             item_order.append(pid)
-        for k in range(WIDE_HEAD_DEPTH_HOLES - 1):
+        for k in range(nrb - 1):
             lk = next_id()
             tracks[lk] = {
                 "gId": lk,
@@ -704,7 +620,7 @@ def build_legacy_expanded() -> dict:
             add_signal(net, tracks[lk], "TRACK")
             item_order.append(lk)
         pw = next_id()
-        pads[pw] = pad_dict(pw, x_rn, ys_stem, str(i + 23), net)
+        pads[pw] = pad_dict(pw, x_rn, ys_stem, str(i + nc + 1), net)
         tr = next_id()
         tracks[tr] = {
             "gId": tr,
@@ -960,12 +876,14 @@ def _write_standard(
     path: Path,
     args: Namespace,
     *,
+    bp: BoardParams,
     branding: BoardBranding | None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(
             build_standard_compressed(
+                bp=bp,
                 margin_mil=args.margin_mil,
                 stem_outline_margin_mil=args.stem_outline_margin_mil,
                 head_outline_extra_mil=args.head_outline_extra_mil,
@@ -987,8 +905,8 @@ def main() -> None:
     p.add_argument(
         "--legacy-expanded",
         action="store_true",
-        help="Also write expanded TRACK/PAD JSON beside the Standard file "
-        "(out/easyeda/<board>.pcb.json or legacy name; not for Pro).",
+        help="Also write legacy expanded JSON with full copper routing "
+        "(out/easyeda/<board>.pcb.json; not for Pro; to be removed).",
     )
     p.add_argument(
         "--no-branding",
@@ -1020,6 +938,28 @@ def main() -> None:
         default=None,
         metavar="NAME",
         help="Load resources/boards/<NAME>.toml; name is used for default output filenames.",
+    )
+    p.add_argument(
+        "--pins",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Total pin count (even). Overrides profile.adapter_pins when set. "
+        "When no --board/--profile, defaults to 44.",
+    )
+    p.add_argument(
+        "--rows-top",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Override: socket depth rows from row A (1..4). Same as preview_adapter_board.",
+    )
+    p.add_argument(
+        "--rows-bottom",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Override: socket depth rows from row B (1..4).",
     )
     p.add_argument(
         "-o",
@@ -1082,16 +1022,32 @@ def main() -> None:
     ):
         branding = profile.branding
 
+    if profile is None:
+        pins_eff = args.pins if args.pins is not None else 44
+        bp = resolve_board_params(
+            None,
+            pins=pins_eff,
+            rows_top=args.rows_top,
+            rows_bottom=args.rows_bottom,
+        )
+    else:
+        bp = resolve_board_params(
+            profile,
+            pins=args.pins,
+            rows_top=args.rows_top,
+            rows_bottom=args.rows_bottom,
+        )
+
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
             args.silk_labels = variant
             outp = _default_standard_path(repo, variant, board_stem=board_stem)
-            _write_standard(outp, args, branding=branding)
+            _write_standard(outp, args, bp=bp, branding=branding)
     else:
         out = args.output or _default_standard_path(
             repo, args.silk_labels, board_stem=board_stem
         )
-        _write_standard(out, args, branding=branding)
+        _write_standard(out, args, bp=bp, branding=branding)
 
     if args.legacy_expanded:
         leg_path = _legacy_expanded_pcb_path(repo, board_stem)

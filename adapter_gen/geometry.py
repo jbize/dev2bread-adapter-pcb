@@ -15,8 +15,10 @@ Point2 = tuple[float, float]
 PolygonMil = Sequence[Point2]
 
 # --- Defaults (mil) — align with scripts/generate_easyeda_adapter_pcb.py ---
+# **Breadboard stem:** 0.1" (100 mil) along a column; 0.5" (500 mil) straddle between the two
+# rows — typical full-size solderless breadboard (not 0.3" mini).
 PITCH = 100.0  # 0.1"
-NARROW_ROW_GAP = 500.0  # breadboard straddle
+NARROW_ROW_GAP = 500.0  # 0.5" between straddled rows
 WIDE_ROW_GAP = 1100.0  # ~1.1" between wide head rows
 NECK_GAP = 500.0  # gap below wide rows before stem block
 X0 = 400.0  # leftmost wide-column reference
