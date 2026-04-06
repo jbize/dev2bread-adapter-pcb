@@ -1,7 +1,7 @@
 """Emit stem neck TRACK segments for EasyEDA Standard.
 
-Left: TopLayer (cyan neck preview). J3 / right: BottomLayer — row-B column stacks,
-stem-side pad → straddle (or pin), straddle → right stem pins (red preview parity).
+Left: TopLayer (red, matches EasyEDA). J3 / right: BottomLayer (blue) — row-B column stacks,
+stem-side pad → straddle (or pin), straddle → right stem pins.
 """
 
 from __future__ import annotations

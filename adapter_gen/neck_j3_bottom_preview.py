@@ -1,11 +1,11 @@
-"""Preview-only: red straddle markers + bent neck routing to J3 pins for ``--bottom-only``.
+"""Preview-only BottomLayer (blue): J3 straddle markers, neck routing, wide-head column stacks.
 
 Also: vertical **wide-head J3 row** column polylines, and straight **stem-side J3 pad → right
-straddle waypoint** joins (bottom-copper preview) when ``preview_traces`` is ``bottom`` or
-``both`` — one segment per net, not a bus across columns.
+straddle waypoint** joins when ``preview_traces`` is ``bottom`` or ``both`` — one segment per
+net, not a bus across columns.
 
-Traces use ``neck_stem_right_net_trace_polyline_mil`` (same bend as left ``neck_cyan``).
-Stroke #cc3333 matches row-reverser red (reference only).
+Traces use ``neck_stem_right_net_trace_polyline_mil`` (same bend as left neck). Strokes match
+EasyEDA BottomLayer preview color.
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ from collections.abc import Callable
 
 from adapter_gen.geometry import BoardParams, head_column_x_mil, wide_head_y_rows_mil
 from adapter_gen.preview_waypoint_style import (
+    BOTTOM_COPPER_PREVIEW_DOT_FILL,
+    BOTTOM_COPPER_PREVIEW_LABEL_FILL,
+    BOTTOM_COPPER_PREVIEW_STROKE,
     LABEL_DY_MIL,
     LABEL_FONT_SIZE_MIL,
     MARKER_RADIUS_MIL,
@@ -29,9 +32,9 @@ from adapter_gen.stem_neck_routing_mil import (
     wide_head_j3_row_column_vertical_trace_points_mil,
 )
 
-_STROKE = "#cc3333"
-_WP_DOT_FILL = "#fce8e8"
-_LBL_FILL = "#5c1a1a"
+_STROKE = BOTTOM_COPPER_PREVIEW_STROKE
+_WP_DOT_FILL = BOTTOM_COPPER_PREVIEW_DOT_FILL
+_LBL_FILL = BOTTOM_COPPER_PREVIEW_LABEL_FILL
 
 
 def append_wide_head_j3_row_column_traces_svg(
@@ -39,7 +42,7 @@ def append_wide_head_j3_row_column_traces_svg(
     p: BoardParams,
     _sub: Callable[..., ET.Element],
 ) -> None:
-    """Red vertical column stacks in the wide-head J3 row (bottom-copper preview only)."""
+    """Blue vertical column stacks in the wide-head J3 row (BottomLayer preview)."""
     traces = wide_head_j3_row_column_vertical_trace_points_mil(p)
     if not traces:
         return
@@ -49,7 +52,7 @@ def append_wide_head_j3_row_column_traces_svg(
         svg,
         "g",
         {
-            "id": "red-wide-head-j3-row-column-traces",
+            "id": "bottom-j3-wide-head-column-traces",
             "aria-label": (
                 "Wide head J3 row column stacks (bottom preview); preview only, not copper"
             ),
@@ -59,7 +62,7 @@ def append_wide_head_j3_row_column_traces_svg(
         g,
         "g",
         {
-            "id": "red-wide-head-j3-row-column-traces-inner",
+            "id": "bottom-j3-wide-head-column-traces-inner",
             "fill": "none",
             "stroke": _STROKE,
             "stroke-width": tw,
@@ -97,7 +100,7 @@ def append_j3_head_to_right_stem_waypoint_join_svg(
         svg,
         "g",
         {
-            "id": "red-j3-head-to-right-stem-straddle-join",
+            "id": "bottom-j3-head-to-stem-straddle-join",
             "fill": "none",
             "stroke": _STROKE,
             "stroke-width": tw,
@@ -130,7 +133,7 @@ def append_neck_j3_stem_right_red_waypoints_svg(
     p: BoardParams,
     _sub: Callable[..., ET.Element],
 ) -> None:
-    """Emit ``red-stem-j3-neck-ref-bottom-only`` — bent straddle → right pin (same as left neck)."""
+    """Emit ``bottom-stem-j3-neck-ref`` — bent straddle → right pin (same as left neck)."""
     wpts = neck_stem_top_straddle_waypoints_right_mil(p)
     if not wpts:
         return
@@ -139,7 +142,7 @@ def append_neck_j3_stem_right_red_waypoints_svg(
         svg,
         "g",
         {
-            "id": "red-stem-j3-neck-ref-bottom-only",
+            "id": "bottom-stem-j3-neck-ref",
             "aria-label": (
                 "Bottom preview: J3 straddle ref + bent routing to pins; not copper"
             ),
@@ -150,7 +153,7 @@ def append_neck_j3_stem_right_red_waypoints_svg(
         g,
         "g",
         {
-            "id": "red-stem-j3-straddle-to-right-pin-traces-bottom-only",
+            "id": "bottom-stem-j3-straddle-to-pin-traces",
             "fill": "none",
             "stroke": _STROKE,
             "stroke-width": tw,
@@ -183,7 +186,7 @@ def append_neck_j3_stem_right_red_waypoints_svg(
             g,
             "g",
             {
-                "id": f"red-stem-j3-wp-{seq}",
+                "id": f"bottom-stem-j3-wp-{seq}",
                 "transform": f"translate({x_m:.2f},{y_m:.2f})",
                 "aria-label": f"J3 straddle ref pin {seq} (bottom preview)",
                 "data-seq": str(seq),
@@ -213,6 +216,6 @@ def append_neck_j3_stem_right_red_waypoints_svg(
                 "font-size": lbl_fs,
                 "font-weight": "600",
                 "font-family": "ui-monospace, Consolas, monospace",
-                "class": "red-stem-j3-bottom-preview-label",
+                "class": "bottom-stem-j3-preview-label",
             },
         ).text = str(seq)

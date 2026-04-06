@@ -1,4 +1,4 @@
-"""Preview-only cyan waypoints along the outermost wide row-A pad line (top row, +Y down).
+"""Preview-only TopLayer (red) waypoints along the outermost wide row-A pad line (top row, +Y).
 
 Order is **left → right** in mil space: position **1** is the **leftmost** column, **num_cols**
 the **rightmost**. This matches ``head_column_x_mil`` (``col = num_cols - 1`` is smallest **X**).
@@ -15,13 +15,15 @@ from adapter_gen.preview_waypoint_style import (
     LABEL_FONT_SIZE_MIL,
     MARKER_RADIUS_MIL,
     MARKER_STROKE_MIL,
+    TOP_COPPER_PREVIEW_DOT_FILL,
+    TOP_COPPER_PREVIEW_LABEL_FILL,
+    TOP_COPPER_PREVIEW_STROKE,
     TRACE_WIDTH_MIL,
 )
 from adapter_gen.row_reverser_geometry import polyline_points_attr
 
-_STROKE = "#5599dd"
-# Discrete markers only — no segment connecting pads (that would imply a copper short).
-_WP_DOT_FILL = "#e8f4fc"
+_STROKE = TOP_COPPER_PREVIEW_STROKE
+_WP_DOT_FILL = TOP_COPPER_PREVIEW_DOT_FILL
 
 
 def top_row_a_waypoints_left_to_right_mil(
@@ -69,7 +71,7 @@ def append_top_row_cyan_waypoints_svg(
         "g",
         {
             "id": "cyan-top-row-waypoints",
-            "aria-label": "Top row (row A) cyan sketch; preview only, not copper",
+            "aria-label": "Top row (row A) TopLayer sketch; preview only, not copper",
         },
     )
     tw = f"{TRACE_WIDTH_MIL:.1f}"
@@ -134,7 +136,7 @@ def append_top_row_cyan_waypoints_svg(
                 "x": "0",
                 "y": lbl_dy,
                 "text-anchor": "middle",
-                "fill": "#1a3a5c",
+                "fill": TOP_COPPER_PREVIEW_LABEL_FILL,
                 "font-size": lbl_fs,
                 "font-weight": "600",
                 "font-family": "ui-monospace, Consolas, monospace",

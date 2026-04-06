@@ -11,7 +11,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from adapter_gen.geometry import BoardParams, stem_layout_mil, stem_pin_y_mil
-from adapter_gen.preview_waypoint_style import TRACE_WIDTH_MIL
+from adapter_gen.preview_waypoint_style import TOP_COPPER_PREVIEW_STROKE, TRACE_WIDTH_MIL
 from adapter_gen.reverser_head_stubs import reverser_head_stub_routing_mil
 from adapter_gen.row_reverser_geometry import (
     polyline_points_attr,
@@ -21,7 +21,7 @@ from adapter_gen.stem_neck_routing_mil import (
     neck_stem_top_straddle_waypoints_mil,
 )
 
-_STROKE = "#5599dd"
+_STROKE = TOP_COPPER_PREVIEW_STROKE
 
 
 def append_wide_head_stub_stem_join_svg(

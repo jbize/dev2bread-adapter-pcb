@@ -3,10 +3,10 @@
 The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_cols`` and the
 innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
 
-Preview **trace** visibility: ``preview_traces`` selects **Top copper** (cyan) vs **Bottom
-copper** (red) in the row-reverser group. Top-row waypoints and neck J1 sketches are cyan
-(Top-only). Wide-head **J3 row** column stacks and **J3 stem-side pad → right straddle** joins are red
-when ``bottom`` or ``both`` (bottom copper preview).
+Preview **trace** colors match EasyEDA: **TopLayer = red**, **BottomLayer = blue**.
+``preview_traces`` selects Top vs Bottom in the row-reverser group. Top-row waypoints and neck J1
+sketches are Top-only (red). Wide-head **J3** column stacks and **J3 → straddle** joins are
+Bottom-only or both (blue).
 """
 
 from __future__ import annotations
@@ -90,18 +90,18 @@ def emit_board_svg(
     if row_reverser:
         title_bits.append("row-A inner reverser sketch")
     if show_top_cyan:
-        title_bits.append("cyan top-row waypoints")
+        title_bits.append("red top-row waypoints (TopLayer)")
     if show_neck_cyan:
-        title_bits.append("cyan neck J1 waypoints")
+        title_bits.append("red neck J1 waypoints (TopLayer)")
     if preview_traces == "top":
         title_bits.append("preview traces top only")
     elif preview_traces == "bottom":
         title_bits.append("preview traces bottom only")
         if neck_cyan_waypoints:
-            title_bits.append("red stem J3 ref markers")
+            title_bits.append("blue stem J3 ref markers (BottomLayer)")
     if show_j3_head_row_columns:
-        title_bits.append("red J3 head row column traces")
-        title_bits.append("red J3 head to right stem straddle joins")
+        title_bits.append("blue J3 head row column traces (BottomLayer)")
+        title_bits.append("blue J3 head to stem straddle joins (BottomLayer)")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -243,7 +243,7 @@ def emit_board_svg(
             for d_txt in text_paths_mil:
                 _sub(g_btxt, "path", {"d": d_txt})
 
-    # Stub-end → stem top (under top-row / neck cyan markers).
+    # Stub-end → stem top (under top-row / neck TopLayer markers).
     if row_reverser:
         append_wide_head_stub_stem_join_svg(
             svg,
@@ -252,11 +252,11 @@ def emit_board_svg(
             preview_traces=preview_traces,
         )
 
-    # Bottom-only: discrete red markers at J3 straddle (same layout as cyan J3 neck).
+    # Bottom-only: discrete blue markers at J3 straddle (same layout as neck J1, mirrored).
     if preview_traces == "bottom" and neck_cyan_waypoints:
         append_neck_j3_stem_right_red_waypoints_svg(svg, p, _sub)
 
-    # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
+    # After silk/branding so temp labels and TopLayer markers are not covered by stroke overlays.
     if show_top_cyan:
         append_top_row_cyan_waypoints_svg(svg, p, _sub)
     if show_j3_head_row_columns:

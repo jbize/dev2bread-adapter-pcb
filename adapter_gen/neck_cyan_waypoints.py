@@ -1,4 +1,4 @@
-"""Preview-only cyan waypoints on the neck (stem top row, straddle).
+"""Preview-only TopLayer (red) waypoints on the neck (stem top row, straddle).
 
 **Neck** waypoints sit on a horizontal line level with the **top** of stem pin/hole **1**
 (center minus ``HOLE_R`` in +Y-down space). Pin **1** is
@@ -27,6 +27,9 @@ from adapter_gen.preview_waypoint_style import (
     LABEL_FONT_SIZE_MIL,
     MARKER_RADIUS_MIL,
     MARKER_STROKE_MIL,
+    TOP_COPPER_PREVIEW_DOT_FILL,
+    TOP_COPPER_PREVIEW_LABEL_FILL,
+    TOP_COPPER_PREVIEW_STROKE,
     TRACE_WIDTH_MIL,
 )
 from adapter_gen.stem_neck_routing_mil import (
@@ -34,8 +37,8 @@ from adapter_gen.stem_neck_routing_mil import (
     neck_stem_top_straddle_waypoints_mil,
 )
 
-_STROKE = "#5599dd"
-_WP_DOT_FILL = "#e8f4fc"
+_STROKE = TOP_COPPER_PREVIEW_STROKE
+_WP_DOT_FILL = TOP_COPPER_PREVIEW_DOT_FILL
 
 
 def append_neck_cyan_waypoints_svg(
@@ -125,7 +128,7 @@ def append_neck_cyan_waypoints_svg(
                 "x": "0",
                 "y": lbl_dy,
                 "text-anchor": "middle",
-                "fill": "#1a3a5c",
+                "fill": TOP_COPPER_PREVIEW_LABEL_FILL,
                 "font-size": lbl_fs,
                 "font-weight": "600",
                 "font-family": "ui-monospace, Consolas, monospace",

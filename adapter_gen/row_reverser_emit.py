@@ -1,9 +1,9 @@
 """Emit row-reverser preview (SVG) and EasyEDA Standard shapes from shared geometry.
 
 Geometry: ``compute_row_reverser_geometry_mil`` + ``row_reverser_y_pad_row_a_innermost_mil``;
-wide-head stub routing from ``reverser_head_stub_routing_mil`` (cyan; stub-end waypoints
+wide-head stub routing from ``reverser_head_stub_routing_mil`` (top layer; stub-end waypoints
 for naming only — not T-stem copper).
-Cyan polylines → Top copper (layer 1); red → Bottom copper (layer 2). Matches
+Top-copper polylines → red strokes; bottom-copper → blue (EasyEDA layer colors). Matches
 ``docs/top-row-reverser-routing.md`` and ``emit_board_svg(..., row_reverser=True)``.
 
 At each routing pass-through center in ``geom.vias``, EasyEDA JSON also emits a **VIA**
@@ -18,6 +18,11 @@ from collections.abc import Callable
 from typing import Literal
 
 from adapter_gen.geometry import BoardParams
+from adapter_gen.preview_waypoint_style import (
+    BOTTOM_COPPER_PREVIEW_STROKE,
+    TOP_COPPER_PREVIEW_LABEL_FILL,
+    TOP_COPPER_PREVIEW_STROKE,
+)
 from adapter_gen.reverser_head_stubs import reverser_head_stub_routing_mil
 from adapter_gen.row_reverser_geometry import (
     compute_row_reverser_geometry_mil,
@@ -98,8 +103,8 @@ def append_row_reverser_svg(
 ) -> None:
     """Append ``<g id=\"row-reverser\">`` (same layout as prior ``svg_preview`` inline).
 
-    ``preview_traces`` (SVG only): ``top`` = cyan (Top copper) polylines + stub sketch;
-    ``bottom`` = red (Bottom copper) polylines; ``both`` = both. Vias draw whenever
+    ``preview_traces`` (SVG only): ``top`` = Top copper (red) polylines + stub sketch;
+    ``bottom`` = Bottom copper (blue) polylines; ``both`` = both. Vias draw whenever
     geometry exists.
     """
     y_pad = row_reverser_y_pad_row_a_innermost_mil(p)
@@ -119,7 +124,7 @@ def append_row_reverser_svg(
             {
                 "id": "row-reverser-inner",
                 "fill": "none",
-                "stroke": "#cc3333",
+                "stroke": BOTTOM_COPPER_PREVIEW_STROKE,
                 "stroke-width": tw,
                 "stroke-linecap": "round",
                 "stroke-linejoin": "round",
@@ -138,7 +143,7 @@ def append_row_reverser_svg(
             {
                 "id": "row-reverser-outer",
                 "fill": "none",
-                "stroke": "#5599dd",
+                "stroke": TOP_COPPER_PREVIEW_STROKE,
                 "stroke-width": tw,
                 "stroke-linecap": "round",
                 "stroke-linejoin": "round",
@@ -183,7 +188,7 @@ def append_row_reverser_svg(
                     "x": "0",
                     "y": f"{lbl_dy:.2f}",
                     "text-anchor": "middle",
-                    "fill": "#8cc8ee",
+                    "fill": TOP_COPPER_PREVIEW_LABEL_FILL,
                     "font-size": f"{lbl_fs:.1f}",
                     "font-family": "ui-monospace, Consolas, monospace",
                     "class": "reverser-head-stub-temp-label",

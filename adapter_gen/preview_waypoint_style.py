@@ -1,9 +1,20 @@
 """Sizing for SVG preview waypoint markers (discussion only; not copper).
 
 Aligns with ``row_reverser_geometry`` preview trace width and default gap.
+
+**Layer colors** match EasyEDA Standard PCB editor: **TopLayer = red**, **BottomLayer = blue**
+(preview strokes only; not gerber).
 """
 
 from __future__ import annotations
+
+# EasyEDA layer table: TopLayer #FF0000, BottomLayer #0000FF — softer variants for SVG.
+TOP_COPPER_PREVIEW_STROKE = "#d32f2f"
+BOTTOM_COPPER_PREVIEW_STROKE = "#1565c0"
+TOP_COPPER_PREVIEW_DOT_FILL = "#ffcdd2"
+TOP_COPPER_PREVIEW_LABEL_FILL = "#b71c1c"
+BOTTOM_COPPER_PREVIEW_DOT_FILL = "#bbdefb"
+BOTTOM_COPPER_PREVIEW_LABEL_FILL = "#0d47a1"
 
 # Match row-reverser preview / typical default signal trace width (mil).
 TRACE_WIDTH_MIL = 6.0

@@ -198,14 +198,14 @@ def main() -> None:
     tb.add_argument(
         "--top-only",
         action="store_true",
-        help="Preview only: Top copper only — cyan strokes (row-reverser, stubs, top-row, neck); "
-        "hide Bottom (red).",
+        help="Preview only: Top copper only — red strokes (EasyEDA TopLayer); "
+        "hide Bottom (blue).",
     )
     tb.add_argument(
         "--bottom-only",
         action="store_true",
-        help="Preview only: Bottom copper — red row-reverser strokes; hide Top (cyan). "
-        "Discrete red markers on the J3 straddle (same spots as cyan J3 neck) unless "
+        help="Preview only: Bottom copper — blue strokes (EasyEDA BottomLayer); hide Top (red). "
+        "Discrete blue J3 straddle markers (same spots as neck J1, mirrored) unless "
         "--no-neck-cyan-waypoints.",
     )
     args = p.parse_args()

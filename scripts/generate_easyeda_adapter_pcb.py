@@ -15,7 +15,7 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
       come from ``adapter_gen/row_reverser_emit.py`` unless ``--no-row-reverser``. **Stem neck**
       TopLayer traces (straddle waypoints → left stem pins **2…N/2**, stair-step diagonals) come
       from ``adapter_gen/stem_neck_emit.py`` unless ``--no-stem-neck-routing``; they match
-      ``adapter_gen/stem_neck_routing_mil`` / the previews (left neck cyan; J3 wide-head + right
+      ``adapter_gen/stem_neck_routing_mil`` / the previews (left neck TopLayer; J3 wide-head + right
       stem on BottomLayer). Head-to-neck copper for pin **1** / net **num_cols+1** is still only
       the straight head→straddle join (no left-style stair on those nets).
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
