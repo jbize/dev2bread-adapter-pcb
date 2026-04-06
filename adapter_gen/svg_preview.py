@@ -4,7 +4,9 @@ The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_col
 innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
 
 Preview **trace** visibility: ``preview_traces`` selects **Top copper** (cyan) vs **Bottom
-copper** (red) in the row-reverser group; top-row and neck sketches are Top-only (cyan).
+copper** (red) in the row-reverser group. Top-row waypoints and neck J1 sketches are cyan
+(Top-only). Wide-head **J3 row** column stacks and **J3 stem-side pad → right straddle** joins are red
+when ``bottom`` or ``both`` (bottom copper preview).
 """
 
 from __future__ import annotations
@@ -25,7 +27,9 @@ from adapter_gen.geometry import (
 from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.neck_cyan_waypoints import append_neck_cyan_waypoints_svg
 from adapter_gen.neck_j3_bottom_preview import (
+    append_j3_head_to_right_stem_waypoint_join_svg,
     append_neck_j3_stem_right_red_waypoints_svg,
+    append_wide_head_j3_row_column_traces_svg,
 )
 from adapter_gen.wide_head_stub_stem_join_preview import (
     append_wide_head_stub_stem_join_svg,
@@ -82,6 +86,7 @@ def emit_board_svg(
         title_bits.append("branding")
     show_top_cyan = top_row_cyan_waypoints and preview_traces != "bottom"
     show_neck_cyan = neck_cyan_waypoints and preview_traces != "bottom"
+    show_j3_head_row_columns = top_row_cyan_waypoints and preview_traces != "top"
     if row_reverser:
         title_bits.append("row-A inner reverser sketch")
     if show_top_cyan:
@@ -94,6 +99,9 @@ def emit_board_svg(
         title_bits.append("preview traces bottom only")
         if neck_cyan_waypoints:
             title_bits.append("red stem J3 ref markers")
+    if show_j3_head_row_columns:
+        title_bits.append("red J3 head row column traces")
+        title_bits.append("red J3 head to right stem straddle joins")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -251,6 +259,9 @@ def emit_board_svg(
     # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
     if show_top_cyan:
         append_top_row_cyan_waypoints_svg(svg, p, _sub)
+    if show_j3_head_row_columns:
+        append_wide_head_j3_row_column_traces_svg(svg, p, _sub)
+        append_j3_head_to_right_stem_waypoint_join_svg(svg, p, _sub)
     if show_neck_cyan:
         append_neck_cyan_waypoints_svg(svg, p, _sub)
 
