@@ -16,6 +16,7 @@ from adapter_gen.geometry import (
     PITCH,
     BoardParams,
     head_column_x_mil,
+    pad_clearance_radius_mil,
     wide_head_y_rows_mil,
 )
 
@@ -24,7 +25,12 @@ _DEFAULT_VIA_R = min(8.0, HOLE_R * 0.4)
 _TRACE_STROKE = 6.0
 _DEFAULT_TRACE_GAP = 8.0
 _DEFAULT_EDGE_OFFSET = 2.0 * HOLE_R + 20.0
-_DEFAULT_NECK_CLEARANCE_MIL = 4.0
+# Gap (mil) below pad copper to first reverser lane; keeps top-layer diagonals off J1 annuli.
+_DEFAULT_NECK_CLEARANCE_MIL = 10.0
+# Extra +Y (down) for all reverser routing vias and the tracks that terminate on them.
+REVERSER_PASSTHROUGH_Y_OFFSET_MIL = 40.0
+# Straight run below innermost J1 row before diagonal to edge via (EasyEDA clearance vs preview).
+REVERSER_J1_VERTICAL_STUB_MIL = 20.0
 
 
 def intersect_x_horizontal_with_segment(
@@ -87,10 +93,13 @@ def _compute_row_reverser_core(
         return None
 
     trace_half = trace_stroke / 2.0
-    y_first_lane = y_pad_row + pad_r + trace_half + neck_clearance_mil
+    # Clear pad copper (not just drill); else traces sit in the annulus if HOLE_R < PAD/2.
+    pad_outer_r = pad_clearance_radius_mil(pad_r)
+    y_first_lane = y_pad_row + pad_outer_r + trace_half + neck_clearance_mil
     y_min_eff = y_first_lane
     if y_min_floor is not None:
         y_min_eff = max(y_min_eff, y_min_floor)
+    y_min_eff += REVERSER_PASSTHROUGH_Y_OFFSET_MIL
 
     x_e = x_col(0) + edge_offset_mil
 
@@ -119,7 +128,10 @@ def _compute_row_reverser_core(
             return y_v(n - 1)
         return y_v(i + 1)
 
-    xa_j6, ya_j6 = x_col(n - 2), y_pad_row
+    stub_y = y_pad_row + REVERSER_J1_VERTICAL_STUB_MIL
+
+    # J6 top-layer reference: vertical stub end on column n-2, then diagonal to edge via (matches cyan).
+    xa_j6, ya_j6 = x_col(n - 2), stub_y
     xb_j6, yb_j6 = x_e, y_v(n - 2)
 
     red: list[list[tuple[float, float]]] = []
@@ -143,15 +155,22 @@ def _compute_row_reverser_core(
                 red.append([(x_e, y_e), (x_end, y_i)])
 
     cyan: list[list[tuple[float, float]]] = []
-    # Layer A: join every row-A pad in each column (top socket stack) before the diagonal to V_i.
+    # Layer A: vertical stack on each column, 20 mil straight down from innermost row, then to V_i.
+    # Stub clears large PTH annuli in EasyEDA before the south-east run (preview holes are smaller).
     if row_a_y_ascending is not None and len(row_a_y_ascending) >= 2:
         ys_join = list(row_a_y_ascending)
         for i in range(n):
             xi = x_col(i)
-            for k in range(len(ys_join) - 1):
-                cyan.append([(xi, ys_join[k]), (xi, ys_join[k + 1])])
-    for i in range(n):
-        cyan.append([(x_col(i), y_pad_row), (x_e, y_v(i))])
+            pts: list[tuple[float, float]] = [(xi, ys_join[0])]
+            for j in range(1, len(ys_join)):
+                pts.append((xi, ys_join[j]))
+            pts.append((xi, stub_y))
+            pts.append((x_e, y_v(i)))
+            cyan.append(pts)
+    else:
+        for i in range(n):
+            xi = x_col(i)
+            cyan.append([(xi, y_pad_row), (xi, stub_y), (x_e, y_v(i))])
 
     vias: list[tuple[float, float]] = []
     for i in range(n):

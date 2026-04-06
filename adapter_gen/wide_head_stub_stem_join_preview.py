@@ -53,7 +53,7 @@ def append_wide_head_stub_stem_join_svg(
             "stroke-linecap": "round",
             "stroke-linejoin": "round",
             "aria-label": (
-                "J1 preview: wide-head stub end to stem top; not copper"
+                "J1: wide-head stub end to stem straddle (EasyEDA TopLayer when exported)"
             ),
         },
     )

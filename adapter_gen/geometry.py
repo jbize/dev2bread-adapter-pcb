@@ -23,8 +23,11 @@ WIDE_ROW_GAP = 1100.0  # ~1.1" between wide head rows
 NECK_GAP = 500.0  # gap below wide rows before stem block
 X0 = 400.0  # leftmost wide-column reference
 Y_W_ROW_A = 280.0  # wide row A (nets 1..N/2), smaller Y = "top" of head
-PAD_SIZE = 55.0
-HOLE_R = 20.0  # drill / pad hole radius for preview
+# PTH for 0.1" headers/sockets (~0.025" pins). Routing must clear *copper* (PAD_SIZE/2), not
+# just the drill (HOLE_R), or traces sit in the annulus when HOLE_R < PAD_SIZE/2.
+PAD_SIZE = 48.0  # mil pad diameter — tight but ≥ drill + typical min annulus
+HOLE_R = 15.0  # mil hole radius → 30 mil drill (~0.76 mm)
+
 MARGIN = 150.0
 HEAD_OUTLINE_EXTRA = 160.0
 STEM_OUTLINE_MARGIN = 130.0
@@ -35,6 +38,16 @@ SILK_OFF_HEAD_MIL = 110.0
 SILK_VERTICAL_HALF_EXTENT_MIL = 75.0
 # Board outline corner fillet (mil); clamped to ~half the shortest edge.
 BOARD_CORNER_RADIUS_MIL = 50.0
+
+
+def pad_copper_outer_radius_mil() -> float:
+    """Half of PTH pad diameter — copper edge distance from pad center."""
+    return PAD_SIZE / 2.0
+
+
+def pad_clearance_radius_mil(hole_radius_mil: float) -> float:
+    """Use below/above pad rows and straddle insets: max of hole vs copper outer radius."""
+    return max(hole_radius_mil, pad_copper_outer_radius_mil())
 
 
 @dataclass(frozen=True)

@@ -13,6 +13,7 @@ from adapter_gen.geometry import (
     HOLE_R,
     BoardParams,
     head_column_x_mil,
+    pad_clearance_radius_mil,
     stem_layout_mil,
     stem_pin_y_mil,
     wide_head_y_rows_mil,
@@ -36,8 +37,9 @@ def neck_stem_top_straddle_waypoints_mil(
 ) -> list[tuple[float, float, int]]:
     """Waypoints ``2 … num_cols`` strictly between stem pin 1 and pin (N/2+1) holes.
 
-    Pin 1 has no waypoint. Centers stay inside ``(x_ln, x_rn)`` with inset from ``HOLE_R``,
-    marker radius, plus ``NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL``. Spacing uses at least
+    Pin 1 has no waypoint. Centers stay inside ``(x_ln, x_rn)`` with inset from pad copper
+    (``pad_clearance_radius_mil(HOLE_R)``), marker radius, plus
+    ``NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL``. Spacing uses at least
     ``TRACE_WIDTH + TRACE_GAP`` when the usable span allows; otherwise compressed. The chain
     is centered in the usable span when slack.
     """
@@ -45,9 +47,10 @@ def neck_stem_top_straddle_waypoints_mil(
     nc = p.num_cols
     if nc < 3:
         return []
-    y_neck = stem_pin_y_mil(0, p) - HOLE_R
+    pr = pad_clearance_radius_mil(HOLE_R)
+    y_neck = stem_pin_y_mil(0, p) - pr
     inset = (
-        HOLE_R
+        pr
         + MARKER_RADIUS_MIL
         + _EDGE_GAP_MIL
         + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
@@ -87,8 +90,9 @@ def neck_stem_top_straddle_waypoints_right_mil(
         return []
     nc = p.num_cols
     _, x_ln, x_rn, _ = stem_layout_mil(p)
+    pr = pad_clearance_radius_mil(HOLE_R)
     inset = (
-        HOLE_R
+        pr
         + MARKER_RADIUS_MIL
         + _EDGE_GAP_MIL
         + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL

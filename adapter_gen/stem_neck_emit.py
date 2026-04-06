@@ -1,30 +1,31 @@
 """Emit stem neck TRACK segments for EasyEDA Standard.
 
-Left: TopLayer (red, matches EasyEDA). J3 / right: BottomLayer (blue) — row-B column stacks,
-stem-side pad → straddle (or pin), straddle → right stem pins.
+TopLayer: wide-head stub end → stem straddle (or pin 1); straddle → left stem pins.
+BottomLayer: J3 row stacks, J3 → straddle, straddle → right stem pins.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
+from adapter_gen.easyeda_layers import EASYEDA_BOTTOM_LAYER_ID, EASYEDA_TOP_LAYER_ID
 from adapter_gen.geometry import (
     BoardParams,
     head_column_x_mil,
+    stem_layout_mil,
+    stem_pin_y_mil,
     wide_head_y_rows_mil,
 )
 from adapter_gen.preview_waypoint_style import TRACE_WIDTH_MIL
+from adapter_gen.reverser_head_stubs import reverser_head_stub_routing_mil
+from adapter_gen.row_reverser_geometry import row_reverser_y_pad_row_a_innermost_mil
 from adapter_gen.stem_neck_routing_mil import (
     neck_stem_left_net_trace_polyline_mil,
     neck_stem_right_net_trace_polyline_mil,
+    neck_stem_top_straddle_waypoints_mil,
     right_stem_straddle_or_pin_target_mil,
     wide_head_j3_row_column_vertical_trace_points_mil,
 )
-
-# Match ``row_reverser_emit`` / ``build_standard_compressed`` layer ids.
-LAYER_TOP_COPPER = "1"
-LAYER_BOTTOM_COPPER = "2"
-
 
 def _append_track_polyline_segments(
     shapes: list[str],
@@ -45,6 +46,49 @@ def _append_track_polyline_segments(
         )
 
 
+def append_wide_head_stub_stem_join_easyeda_tracks(
+    shapes: list[str],
+    nid: Callable[[], str],
+    *,
+    p: BoardParams,
+    mil_to_u: Callable[[float], float],
+    trace_width_mil: float = TRACE_WIDTH_MIL,
+) -> None:
+    """TopLayer: straight segment from each wide-head stub end to straddle (or J1 pin 1).
+
+    Same geometry as ``wide_head_stub_stem_join_preview`` / ``reverser_head_stub_routing_mil``.
+    Nets 2…num_cols need straddle waypoints (``num_cols`` ≥ 3); net 1 → ``(x_ln, pin 1)``.
+    """
+    y_pad = row_reverser_y_pad_row_a_innermost_mil(p)
+    rhs = reverser_head_stub_routing_mil(p, y_pad_row=y_pad)
+    if rhs is None or not rhs.waypoints:
+        return
+    neck_list = neck_stem_top_straddle_waypoints_mil(p)
+    neck_by_seq = {seq: (x, y) for x, y, seq in neck_list}
+    _, x_ln, _, _ = stem_layout_mil(p)
+    sw = mil_to_u(trace_width_mil)
+    for sx, sy, net_s in rhs.waypoints:
+        try:
+            net = int(net_s)
+        except ValueError:
+            continue
+        if net == 1:
+            ex, ey = x_ln, stem_pin_y_mil(0, p)
+        elif net in neck_by_seq:
+            ex, ey = neck_by_seq[net]
+        else:
+            continue
+        pts = [(sx, sy), (ex, ey)]
+        _append_track_polyline_segments(
+            shapes,
+            nid,
+            pts=pts,
+            layer=EASYEDA_TOP_LAYER_ID,
+            mil_to_u=mil_to_u,
+            sw=sw,
+        )
+
+
 def append_stem_neck_left_easyeda_tracks(
     shapes: list[str],
     nid: Callable[[], str],
@@ -53,9 +97,9 @@ def append_stem_neck_left_easyeda_tracks(
     mil_to_u: Callable[[float], float],
     trace_width_mil: float = TRACE_WIDTH_MIL,
 ) -> None:
-    """Append TopLayer TRACK pairs for nets 2..num_cols (straddle → left stem).
+    """Append TopLayer TRACK for nets 2..num_cols (straddle → left stem pins).
 
-    Pin 1 has no neck leg; head-to-neck connection is not drawn here.
+    Stub end → straddle is ``append_wide_head_stub_stem_join_easyeda_tracks`` (run first).
     """
     sw = mil_to_u(trace_width_mil)
     for seq in range(2, p.num_cols + 1):
@@ -66,7 +110,7 @@ def append_stem_neck_left_easyeda_tracks(
             shapes,
             nid,
             pts=pts,
-            layer=LAYER_TOP_COPPER,
+            layer=EASYEDA_TOP_LAYER_ID,
             mil_to_u=mil_to_u,
             sw=sw,
         )
@@ -91,7 +135,7 @@ def append_stem_neck_right_easyeda_tracks(
             shapes,
             nid,
             pts=pts,
-            layer=LAYER_BOTTOM_COPPER,
+            layer=EASYEDA_BOTTOM_LAYER_ID,
             mil_to_u=mil_to_u,
             sw=sw,
         )
@@ -115,7 +159,7 @@ def append_wide_head_j3_row_column_easyeda_tracks(
             shapes,
             nid,
             pts=pts,
-            layer=LAYER_BOTTOM_COPPER,
+            layer=EASYEDA_BOTTOM_LAYER_ID,
             mil_to_u=mil_to_u,
             sw=sw,
         )
@@ -147,7 +191,7 @@ def append_j3_head_to_right_stem_straddle_join_easyeda_tracks(
             shapes,
             nid,
             pts=pts,
-            layer=LAYER_BOTTOM_COPPER,
+            layer=EASYEDA_BOTTOM_LAYER_ID,
             mil_to_u=mil_to_u,
             sw=sw,
         )

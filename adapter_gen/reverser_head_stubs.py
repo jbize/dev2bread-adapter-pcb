@@ -15,15 +15,17 @@ from adapter_gen.geometry import (
     BoardParams,
     HOLE_R,
     head_column_x_mil,
+    pad_clearance_radius_mil,
     wide_head_y_rows_mil,
 )
+from adapter_gen.row_reverser_geometry import REVERSER_PASSTHROUGH_Y_OFFSET_MIL
 
 # Match ``row_reverser_geometry.py`` defaults
 _DEFAULT_VIA_R = min(8.0, HOLE_R * 0.4)
 _TRACE_STROKE = 6.0
 _DEFAULT_TRACE_GAP = 8.0
 _DEFAULT_EDGE_OFFSET = 2.0 * HOLE_R + 20.0
-_DEFAULT_NECK_CLEARANCE_MIL = 4.0
+_DEFAULT_NECK_CLEARANCE_MIL = 10.0
 
 
 @dataclass(frozen=True)
@@ -59,10 +61,12 @@ def reverser_head_stub_routing_mil(
     x_e = x_col(0) + edge_offset_mil
 
     trace_half = trace_stroke / 2.0
-    y_first_lane = y_pad_row + pad_r + trace_half + neck_clearance_mil
+    pad_outer_r = pad_clearance_radius_mil(pad_r)
+    y_first_lane = y_pad_row + pad_outer_r + trace_half + neck_clearance_mil
     y_min_eff = y_first_lane
     if y_min_floor is not None:
         y_min_eff = max(y_min_eff, y_min_floor)
+    y_min_eff += REVERSER_PASSTHROUGH_Y_OFFSET_MIL
 
     if max_y_span is not None:
         dy = max_y_span / (n - 1)
@@ -85,7 +89,7 @@ def reverser_head_stub_routing_mil(
 
     y_bottom_right_via = y_v(n - 1)
     stem_side_row_b_y = wide_head_y_rows_mil(p=p, from_row_a=False)[0]
-    y_end = stem_side_row_b_y + pad_r + neck_clearance_mil + trace_stroke / 2.0
+    y_end = stem_side_row_b_y + pad_outer_r + neck_clearance_mil + trace_stroke / 2.0
 
     if y_end <= y_bottom_right_via + 1e-6:
         return None

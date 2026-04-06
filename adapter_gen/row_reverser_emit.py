@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from typing import Literal
 
+from adapter_gen.easyeda_layers import EASYEDA_BOTTOM_LAYER_ID, EASYEDA_TOP_LAYER_ID
 from adapter_gen.geometry import BoardParams
 from adapter_gen.preview_waypoint_style import (
     BOTTOM_COPPER_PREVIEW_STROKE,
@@ -30,13 +31,11 @@ from adapter_gen.row_reverser_geometry import (
     row_reverser_y_pad_row_a_innermost_mil,
 )
 
-# Same layer table as ``build_standard_compressed`` in generate_easyeda_adapter_pcb.py
-LAYER_TOP_COPPER = "1"
-LAYER_BOTTOM_COPPER = "2"
-
 # Plated routing vias (file units: 1 = 10 mil, same as ``mil_to_u`` in generate_easyeda_adapter_pcb).
-# Outer 32 mil / 8 mil drill (4 mil radius) — typical signal via; matches LCEDA doc examples.
-_ROUTING_VIA_OUTER_DIAM_MIL = 32.0
+# Drill is 8 mil diameter (hole radius 4 mil). Outer diameter is the via *pad* (annulus), not the
+# drill: fabs need enough copper around the hole (often ~4 mil/side for cheap runs). 16 mil outer
+# ≈ 8 + 8 annulus; bump to 20 if your DRC requires a wider ring.
+_ROUTING_VIA_OUTER_DIAM_MIL = 16.0
 _ROUTING_VIA_HOLE_RADIUS_MIL = 4.0
 
 
@@ -82,9 +81,9 @@ def append_row_reverser_easyeda_shapes(
             )
 
     for seg in cyan:
-        add_segments(seg, LAYER_TOP_COPPER)
+        add_segments(seg, EASYEDA_TOP_LAYER_ID)
     for seg in geom.red:
-        add_segments(seg, LAYER_BOTTOM_COPPER)
+        add_segments(seg, EASYEDA_BOTTOM_LAYER_ID)
 
     d_u = mil_to_u(_ROUTING_VIA_OUTER_DIAM_MIL)
     hr_u = mil_to_u(_ROUTING_VIA_HOLE_RADIUS_MIL)

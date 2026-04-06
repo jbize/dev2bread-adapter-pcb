@@ -56,7 +56,7 @@ _DEFAULT_TRACE_GAP = 8.0
 # Edge via column: ~one pad diameter + neck past last pad center (mil)
 _DEFAULT_EDGE_OFFSET = 2.0 * HOLE_R + 20.0
 # Red horizontals + vias start below PTH holes (center + pad_r + stroke/2 + this gap)
-_DEFAULT_NECK_CLEARANCE_MIL = 4.0
+_DEFAULT_NECK_CLEARANCE_MIL = 10.0
 
 
 def _pad_label_j(i: int) -> str:
