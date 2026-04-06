@@ -24,6 +24,9 @@ from adapter_gen.geometry import (
 )
 from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.neck_cyan_waypoints import append_neck_cyan_waypoints_svg
+from adapter_gen.wide_head_stub_stem_join_preview import (
+    append_wide_head_stub_stem_join_svg,
+)
 from adapter_gen.top_row_cyan_waypoints import append_top_row_cyan_waypoints_svg
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
@@ -226,6 +229,15 @@ def emit_board_svg(
             )
             for d_txt in text_paths_mil:
                 _sub(g_btxt, "path", {"d": d_txt})
+
+    # Stub-end → stem top (under top-row / neck cyan markers).
+    if row_reverser:
+        append_wide_head_stub_stem_join_svg(
+            svg,
+            p,
+            _sub,
+            preview_traces=preview_traces,
+        )
 
     # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
     if show_top_cyan:
