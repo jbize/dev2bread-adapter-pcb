@@ -35,8 +35,9 @@ from adapter_gen.row_reverser_geometry import (
 # Drill is 8 mil diameter (hole radius 4 mil). Outer diameter is the via *pad* (annulus), not the
 # drill: fabs need enough copper around the hole (often ~4 mil/side for cheap runs). 16 mil outer
 # ≈ 8 + 8 annulus; bump to 20 if your DRC requires a wider ring.
-_ROUTING_VIA_OUTER_DIAM_MIL = 16.0
-_ROUTING_VIA_HOLE_RADIUS_MIL = 4.0
+# Exported for DRCRULE in ``generate_easyeda_adapter_pcb`` (must match emitted VIA~ dimensions).
+ROUTING_VIA_OUTER_DIAM_MIL = 16.0
+ROUTING_VIA_HOLE_RADIUS_MIL = 4.0
 
 
 def _dedupe_via_centers_mil(centers: list[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -85,8 +86,8 @@ def append_row_reverser_easyeda_shapes(
     for seg in geom.red:
         add_segments(seg, EASYEDA_BOTTOM_LAYER_ID)
 
-    d_u = mil_to_u(_ROUTING_VIA_OUTER_DIAM_MIL)
-    hr_u = mil_to_u(_ROUTING_VIA_HOLE_RADIUS_MIL)
+    d_u = mil_to_u(ROUTING_VIA_OUTER_DIAM_MIL)
+    hr_u = mil_to_u(ROUTING_VIA_HOLE_RADIUS_MIL)
     for vx_m, vy_m in _dedupe_via_centers_mil(list(geom.vias)):
         shapes.append(
             f"VIA~{mil_to_u(vx_m)}~{mil_to_u(vy_m)}~{d_u}~~{hr_u}~{nid()}"

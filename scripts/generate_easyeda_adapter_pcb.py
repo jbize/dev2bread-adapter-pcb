@@ -81,7 +81,11 @@ try:
         wide_head_y_rows_mil,
     )
     from adapter_gen.preview_waypoint_style import TRACE_WIDTH_MIL
-    from adapter_gen.row_reverser_emit import append_row_reverser_easyeda_shapes
+    from adapter_gen.row_reverser_emit import (
+        ROUTING_VIA_HOLE_RADIUS_MIL,
+        ROUTING_VIA_OUTER_DIAM_MIL,
+        append_row_reverser_easyeda_shapes,
+    )
     from adapter_gen.stem_neck_emit import (
         append_stem_neck_j3_bottom_routing_easyeda_tracks,
         append_stem_neck_left_easyeda_tracks,
@@ -514,8 +518,10 @@ def build_standard_compressed(
                 # or every route fails "Track width min" (e.g. 6 mil tracks need 0.6 here, not 1).
                 "trackWidth": mil_to_u(TRACE_WIDTH_MIL),
                 "clearance": 0.6,
-                "viaHoleDiameter": 2.4,
-                "viaHoleD": 1.2,
+                # Via pad outer / drill inner (10×mil file units). Defaults 2.4/1.2 implied 24/12 mil
+                # mins — our routing vias are 16 mil OD / 8 mil drill (see row_reverser_emit VIA~).
+                "viaHoleDiameter": mil_to_u(ROUTING_VIA_OUTER_DIAM_MIL),
+                "viaHoleD": mil_to_u(2.0 * ROUTING_VIA_HOLE_RADIUS_MIL),
             },
             "isRealtime": False,
             "isDrcOnRoutingOrPlaceVia": False,
