@@ -1,13 +1,22 @@
-"""Stem neck routing geometry (mil): straddle waypoints to left stem pins.
+"""Stem neck routing geometry (mil): straddle waypoints to stem pins + J3 wide-head helpers.
 
-Single source of truth for SVG preview (``neck_cyan_waypoints``) and EasyEDA TopLayer
-``TRACK`` segments (``stem_neck_emit``). Nets **2 … num_cols** only; pin 1 has no neck
-waypoint. Traces do **not** connect to the wide head here — head-to-neck remains separate.
+Single source of truth for SVG preview and EasyEDA ``TRACK`` segments (``stem_neck_emit``).
+
+**Left column:** nets **2 … num_cols** (no straddle waypoint for pin 1). **Right / J3:**
+nets **num_cols+2 … 2*num_cols** (no straddle waypoint for net ``num_cols+1``). J3 wide-head
+column stacks and head→straddle joins use ``head_column_x_mil`` / ``wide_head_y_rows_mil``.
 """
 
 from __future__ import annotations
 
-from adapter_gen.geometry import HOLE_R, BoardParams, stem_layout_mil, stem_pin_y_mil
+from adapter_gen.geometry import (
+    HOLE_R,
+    BoardParams,
+    head_column_x_mil,
+    stem_layout_mil,
+    stem_pin_y_mil,
+    wide_head_y_rows_mil,
+)
 from adapter_gen.preview_waypoint_style import (
     MARKER_RADIUS_MIL,
     MIN_TRACE_CENTER_PITCH_MIL,
@@ -138,3 +147,38 @@ def neck_stem_right_net_trace_polyline_mil(
         y_bend = stem_pin_y_mil(row_idx - 1, p) + NECK_BEND_BELOW_PRIOR_PIN_MIL
         return [(x_m, y_m), (x_m, y_bend), (x_rn, py)]
     return None
+
+
+def wide_head_j3_row_column_vertical_trace_points_mil(
+    p: BoardParams,
+) -> list[tuple[int, list[tuple[float, float]]]]:
+    """Per column: polyline along J3 / row-B stack at ``head_column_x_mil``, same net."""
+    ys = wide_head_y_rows_mil(p=p, from_row_a=False)
+    if len(ys) < 2:
+        return []
+    out: list[tuple[int, list[tuple[float, float]]]] = []
+    for col in range(p.num_cols):
+        x = head_column_x_mil(col, p)
+        pts = [(x, y) for y in ys]
+        out.append((col, pts))
+    return out
+
+
+def right_stem_straddle_or_pin_target_mil(
+    p: BoardParams, seq: int
+) -> tuple[float, float] | None:
+    """J3 head→stem join endpoint: straddle waypoint if present, else right stem pin center.
+
+    ``seq`` is stem net id ``num_cols+1 … 2*num_cols``. No straddle waypoint for
+    ``num_cols+1``; use ``(x_rn, stem_pin_y_mil(col))`` with ``col = seq - num_cols - 1``.
+    """
+    nc = p.num_cols
+    if seq < nc + 1 or seq > 2 * nc:
+        return None
+    wpts = neck_stem_top_straddle_waypoints_right_mil(p)
+    by_seq = {s: (x, y) for x, y, s in wpts}
+    if seq in by_seq:
+        return by_seq[seq]
+    col = seq - nc - 1
+    _, _, x_rn, _ = stem_layout_mil(p)
+    return (x_rn, stem_pin_y_mil(col, p))

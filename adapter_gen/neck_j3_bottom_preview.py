@@ -13,13 +13,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 
-from adapter_gen.geometry import (
-    BoardParams,
-    head_column_x_mil,
-    stem_layout_mil,
-    stem_pin_y_mil,
-    wide_head_y_rows_mil,
-)
+from adapter_gen.geometry import BoardParams, head_column_x_mil, wide_head_y_rows_mil
 from adapter_gen.preview_waypoint_style import (
     LABEL_DY_MIL,
     LABEL_FONT_SIZE_MIL,
@@ -31,26 +25,13 @@ from adapter_gen.row_reverser_geometry import polyline_points_attr
 from adapter_gen.stem_neck_routing_mil import (
     neck_stem_right_net_trace_polyline_mil,
     neck_stem_top_straddle_waypoints_right_mil,
+    right_stem_straddle_or_pin_target_mil,
+    wide_head_j3_row_column_vertical_trace_points_mil,
 )
 
 _STROKE = "#cc3333"
 _WP_DOT_FILL = "#fce8e8"
 _LBL_FILL = "#5c1a1a"
-
-
-def wide_head_j3_row_column_vertical_trace_points_mil(
-    p: BoardParams,
-) -> list[tuple[int, list[tuple[float, float]]]]:
-    """Per column: polyline along J3 / row-B stack at ``head_column_x_mil``, same net."""
-    ys = wide_head_y_rows_mil(p=p, from_row_a=False)
-    if len(ys) < 2:
-        return []
-    out: list[tuple[int, list[tuple[float, float]]]] = []
-    for col in range(p.num_cols):
-        x = head_column_x_mil(col, p)
-        pts = [(x, y) for y in ys]
-        out.append((col, pts))
-    return out
 
 
 def append_wide_head_j3_row_column_traces_svg(
@@ -100,26 +81,6 @@ def append_wide_head_j3_row_column_traces_svg(
         )
 
 
-def _right_stem_straddle_or_pin_target_mil(
-    p: BoardParams, seq: int
-) -> tuple[float, float] | None:
-    """Target for J3 head→stem join: straddle waypoint if present, else right stem pin center.
-
-    ``seq`` is stem net id ``num_cols+1 … 2*num_cols``. No straddle waypoint for
-    ``num_cols+1`` (mirrors pin 1 on the left); use ``(x_rn, stem_pin_y_mil(0))``.
-    """
-    nc = p.num_cols
-    if seq < nc + 1 or seq > 2 * nc:
-        return None
-    wpts = neck_stem_top_straddle_waypoints_right_mil(p)
-    by_seq = {s: (x, y) for x, y, s in wpts}
-    if seq in by_seq:
-        return by_seq[seq]
-    col = seq - nc - 1
-    _, _, x_rn, _ = stem_layout_mil(p)
-    return (x_rn, stem_pin_y_mil(col, p))
-
-
 def append_j3_head_to_right_stem_waypoint_join_svg(
     svg: ET.Element,
     p: BoardParams,
@@ -149,7 +110,7 @@ def append_j3_head_to_right_stem_waypoint_join_svg(
     )
     for col in range(nc):
         seq = nc + col + 1
-        end = _right_stem_straddle_or_pin_target_mil(p, seq)
+        end = right_stem_straddle_or_pin_target_mil(p, seq)
         if end is None:
             continue
         x0 = head_column_x_mil(col, p)

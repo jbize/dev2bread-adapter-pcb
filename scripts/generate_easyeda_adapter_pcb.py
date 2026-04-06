@@ -15,8 +15,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
       come from ``adapter_gen/row_reverser_emit.py`` unless ``--no-row-reverser``. **Stem neck**
       TopLayer traces (straddle waypoints → left stem pins **2…N/2**, stair-step diagonals) come
       from ``adapter_gen/stem_neck_emit.py`` unless ``--no-stem-neck-routing``; they match
-      ``adapter_gen/stem_neck_routing_mil`` / the cyan neck preview. Head-to-neck copper is still
-      **not** auto-routed here (pin **1** has no neck leg in that sketch).
+      ``adapter_gen/stem_neck_routing_mil`` / the previews (left neck cyan; J3 wide-head + right
+      stem on BottomLayer). Head-to-neck copper for pin **1** / net **num_cols+1** is still only
+      the straight head→straddle join (no left-style stair on those nets).
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
@@ -79,7 +80,10 @@ try:
         wide_head_y_rows_mil,
     )
     from adapter_gen.row_reverser_emit import append_row_reverser_easyeda_shapes
-    from adapter_gen.stem_neck_emit import append_stem_neck_left_easyeda_tracks
+    from adapter_gen.stem_neck_emit import (
+        append_stem_neck_j3_bottom_routing_easyeda_tracks,
+        append_stem_neck_left_easyeda_tracks,
+    )
     from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
 except ImportError as e:
     print(
@@ -281,7 +285,8 @@ def build_standard_compressed(
 
     ``bp`` must match ``resolve_board_params`` / preview SVG (``adapter_gen.geometry``).
     Row-reverser tracks use the same geometry as ``append_row_reverser_svg`` / ``emit_board_svg``.
-    Stem neck TopLayer tracks use ``stem_neck_routing_mil`` / cyan neck preview (nets 2…).
+    Stem neck: TopLayer left (nets 2…); BottomLayer J3 column stacks, head→straddle joins, and
+    right straddle→pins — same geometry as ``stem_neck_routing_mil`` / bottom preview.
     """
     if silk_labels not in ("none", "devkitc1", "numeric"):
         raise ValueError(f"invalid silk_labels: {silk_labels!r}")
@@ -353,6 +358,9 @@ def build_standard_compressed(
 
     if stem_neck_routing:
         append_stem_neck_left_easyeda_tracks(shapes, nid, p=bp, mil_to_u=mil_to_u)
+        append_stem_neck_j3_bottom_routing_easyeda_tracks(
+            shapes, nid, p=bp, mil_to_u=mil_to_u
+        )
 
     if silk_pin1:
         sw = max(mil_to_u(5.0), 0.5)
@@ -514,7 +522,7 @@ def build_legacy_expanded() -> dict:
 
     Not for EasyEDA Pro File Source. **Scheduled for removal** once the new router exists;
     default Standard JSON uses ``build_standard_compressed`` (row-reverser Top/Bottom TRACKs;
-    stem neck TopLayer for nets 2…; no full head-to-stem routing).
+    stem neck left Top + J3 bottom routing; no full J1 head-to-stem beyond stubs).
     """
 
     gid = 0
@@ -959,7 +967,7 @@ def main() -> None:
     p.add_argument(
         "--no-stem-neck-routing",
         action="store_true",
-        help="Omit stem neck TopLayer TRACKs (straddle → left stem pins 2…; same as cyan preview).",
+        help="Omit stem neck TRACKs: TopLayer left (2…) and BottomLayer J3 (same geometry as preview).",
     )
     p.add_argument(
         "--silk-labels",
