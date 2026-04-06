@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from adapter_gen.board_profile import BoardBranding
+from adapter_gen.branding import BRANDING_PREVIEW_SILK_COLOR, BRANDING_PREVIEW_STROKE_MIL
 from adapter_gen.geometry import (
     HOLE_R,
     BoardParams,
@@ -234,8 +235,8 @@ def emit_board_svg(
                 {
                     "id": "branding-text",
                     "fill": "none",
-                    "stroke": "#2a2a28",
-                    "stroke-width": "6",
+                    "stroke": BRANDING_PREVIEW_SILK_COLOR,
+                    "stroke-width": f"{BRANDING_PREVIEW_STROKE_MIL:.1f}",
                     "stroke-linejoin": "round",
                     "stroke-linecap": "round",
                 },

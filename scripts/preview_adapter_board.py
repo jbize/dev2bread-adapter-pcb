@@ -24,6 +24,7 @@ Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1
   ./scripts/preview_adapter_board.py --profile resources/boards/example-14pin-7-per-row.toml
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --no-branding
+  ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --branding-font-family "DejaVu Serif"
 
   ./scripts/preview_adapter_board.py --pins 44 --silk numeric --bottom-only
       # preview: bottom-copper trace strokes only (no top-layer sketch obscuring)
@@ -38,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 # Repo root on path
@@ -169,6 +171,13 @@ def main() -> None:
         action="store_true",
         help="Omit optional board branding from TOML ([branding] text / image), even if defined.",
     )
+    p.add_argument(
+        "--branding-font-family",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Override [branding].font_family; fails if matplotlib cannot resolve this face.",
+    )
     rr = p.add_mutually_exclusive_group()
     rr.add_argument(
         "--row-reverser",
@@ -258,6 +267,18 @@ def main() -> None:
         and not args.no_branding
     ):
         branding = profile.branding
+
+    if args.branding_font_family is not None:
+        fam = args.branding_font_family.strip()
+        if not fam:
+            p.error("--branding-font-family requires a non-empty name")
+        if args.no_branding:
+            p.error("--branding-font-family cannot be used with --no-branding")
+        if branding is None:
+            p.error(
+                "--branding-font-family requires a board profile with [branding] text or image"
+            )
+        branding = replace(branding, font_family=fam, font_explicit=True)
 
     if args.row_reverser is not None:
         row_reverser = args.row_reverser

@@ -45,6 +45,7 @@ import json
 import sys
 from argparse import Namespace
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -970,6 +971,13 @@ def main() -> None:
         help="Omit optional board branding from TOML ([branding] text / image), even if defined.",
     )
     p.add_argument(
+        "--branding-font-family",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Override [branding].font_family; fails if matplotlib cannot resolve this face.",
+    )
+    p.add_argument(
         "--no-silk-pin1",
         action="store_true",
         help="Omit Top Silk circles marking pin 1 (wide + stem).",
@@ -1102,6 +1110,18 @@ def main() -> None:
         and not args.no_branding
     ):
         branding = profile.branding
+
+    if args.branding_font_family is not None:
+        fam = args.branding_font_family.strip()
+        if not fam:
+            p.error("--branding-font-family requires a non-empty name")
+        if args.no_branding:
+            p.error("--branding-font-family cannot be used with --no-branding")
+        if branding is None:
+            p.error(
+                "--branding-font-family requires a board profile with [branding] text or image"
+            )
+        branding = replace(branding, font_family=fam, font_explicit=True)
 
     if profile is None:
         pins_eff = args.pins if args.pins is not None else 44

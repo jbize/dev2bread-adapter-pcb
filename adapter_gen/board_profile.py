@@ -21,10 +21,14 @@ class BoardBranding:
     text: str | None
     image_path: Path | None
     # Matplotlib ``FontProperties`` (glyph outline before fit-to-region scaling).
-    font_family: str = "Segoe Script"
+    font_family: str = "DejaVu Sans"
     font_size_pt: float = 96.0
-    font_weight: str = "bold"
-    font_style: str = "italic"
+    font_weight: str = "normal"
+    font_style: str = "normal"
+    # True when ``font_family`` / ``font_weight`` / ``font_style`` came from TOML or CLI override.
+    font_explicit: bool = False
+    # True when ``image`` was set to a non-empty path in TOML (file must exist).
+    image_explicit: bool = False
 
 
 @dataclass(frozen=True)
@@ -51,23 +55,29 @@ def _repo_root_from_board_profile(path: Path) -> Path:
     return path.resolve().parent.parent.parent
 
 
-def _branding_font_fields(br: dict) -> tuple[str, float, str, str]:
-    """Parse ``font_*`` from ``[branding]`` (defaults: script-like bold italic)."""
+def _branding_font_fields(br: dict) -> tuple[str, float, str, str, bool]:
+    """Parse ``font_*`` from ``[branding]``.
+
+    Defaults (when keys absent): DejaVu Sans, 96 pt, normal, normal — always resolvable by
+    matplotlib. ``font_explicit`` is True if any of ``font_family``, ``font_weight``, or
+    ``font_style`` appears in TOML (then matplotlib must resolve that face/weight/style).
+    """
+    font_explicit = any(k in br for k in ("font_family", "font_weight", "font_style"))
     raw_fam = br.get("font_family")
     if raw_fam is not None and str(raw_fam).strip():
         family = str(raw_fam).strip()
     else:
-        family = "Segoe Script"
+        family = "DejaVu Sans"
     raw_sz = br.get("font_size", 96.0)
     try:
         font_size_pt = float(raw_sz)
     except (TypeError, ValueError):
         font_size_pt = 96.0
-    raw_w = br.get("font_weight", "bold")
-    weight = str(raw_w).strip().lower() if raw_w is not None else "bold"
-    raw_s = br.get("font_style", "italic")
-    style = str(raw_s).strip().lower() if raw_s is not None else "italic"
-    return family, font_size_pt, weight, style
+    raw_w = br.get("font_weight", "normal")
+    weight = str(raw_w).strip().lower() if raw_w is not None else "normal"
+    raw_s = br.get("font_style", "normal")
+    style = str(raw_s).strip().lower() if raw_s is not None else "normal"
+    return family, font_size_pt, weight, style, font_explicit
 
 
 def load_board_profile(path: Path) -> BoardProfile:
@@ -101,7 +111,12 @@ def load_board_profile(path: Path) -> BoardProfile:
             repo = _repo_root_from_board_profile(path)
             img_path = pimg.resolve() if pimg.is_absolute() else (repo / pimg).resolve()
         if text is not None or img_path is not None:
-            ff, fsz, fw, fst = _branding_font_fields(br)
+            ff, fsz, fw, fst, font_explicit = _branding_font_fields(br)
+            image_explicit = (
+                "image" in br
+                and br.get("image") is not None
+                and str(br.get("image")).strip() != ""
+            )
             branding = BoardBranding(
                 text=text,
                 image_path=img_path,
@@ -109,6 +124,8 @@ def load_board_profile(path: Path) -> BoardProfile:
                 font_size_pt=fsz,
                 font_weight=fw,
                 font_style=fst,
+                font_explicit=font_explicit,
+                image_explicit=image_explicit,
             )
 
     silk_gpio_paths_json: str | None = None
