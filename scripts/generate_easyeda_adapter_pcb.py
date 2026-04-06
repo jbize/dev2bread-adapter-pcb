@@ -10,10 +10,13 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     (informally) a guitar **neck**. Rotated **90°** in the PCB vs the head; 22-pin direction **+Y**,
     straddle along **+X** (~0.5"). Placed **below** the head, centered (T shape).
     * **Wide head (optional rows):** On each side of the center gap, **four** 0.1\"-spaced holes per
-    column (breadboard-style depth) — solder headers in **one** row only to match different
-    dev-board widths. **Row-reverser** Top/Bottom **TRACK** segments (same geometry as SVG preview)
-    come from ``adapter_gen/row_reverser_emit.py`` unless ``--no-row-reverser``. Stem Manhattan
-    routing between head and breadboard is still **not** auto-routed here.
+      column (breadboard-style depth) — solder headers in **one** row only to match different
+      dev-board widths. **Row-reverser** Top/Bottom **TRACK** segments (same geometry as SVG preview)
+      come from ``adapter_gen/row_reverser_emit.py`` unless ``--no-row-reverser``. **Stem neck**
+      TopLayer traces (straddle waypoints → left stem pins **2…N/2**, stair-step diagonals) come
+      from ``adapter_gen/stem_neck_emit.py`` unless ``--no-stem-neck-routing``; they match
+      ``adapter_gen/stem_neck_routing_mil`` / the cyan neck preview. Head-to-neck copper is still
+      **not** auto-routed here (pin **1** has no neck leg in that sketch).
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
@@ -76,6 +79,7 @@ try:
         wide_head_y_rows_mil,
     )
     from adapter_gen.row_reverser_emit import append_row_reverser_easyeda_shapes
+    from adapter_gen.stem_neck_emit import append_stem_neck_left_easyeda_tracks
     from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
 except ImportError as e:
     print(
@@ -271,11 +275,13 @@ def build_standard_compressed(
     branding: BoardBranding | None = None,
     silk_gpio_paths_json: str | None = None,
     row_reverser: bool = True,
+    stem_neck_routing: bool = True,
 ) -> dict:
     """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings).
 
     ``bp`` must match ``resolve_board_params`` / preview SVG (``adapter_gen.geometry``).
     Row-reverser tracks use the same geometry as ``append_row_reverser_svg`` / ``emit_board_svg``.
+    Stem neck TopLayer tracks use ``stem_neck_routing_mil`` / cyan neck preview (nets 2…).
     """
     if silk_labels not in ("none", "devkitc1", "numeric"):
         raise ValueError(f"invalid silk_labels: {silk_labels!r}")
@@ -344,6 +350,9 @@ def build_standard_compressed(
 
     if row_reverser:
         append_row_reverser_easyeda_shapes(shapes, nid, p=bp, mil_to_u=mil_to_u)
+
+    if stem_neck_routing:
+        append_stem_neck_left_easyeda_tracks(shapes, nid, p=bp, mil_to_u=mil_to_u)
 
     if silk_pin1:
         sw = max(mil_to_u(5.0), 0.5)
@@ -505,7 +514,7 @@ def build_legacy_expanded() -> dict:
 
     Not for EasyEDA Pro File Source. **Scheduled for removal** once the new router exists;
     default Standard JSON uses ``build_standard_compressed`` (row-reverser Top/Bottom TRACKs;
-    no stem routing).
+    stem neck TopLayer for nets 2…; no full head-to-stem routing).
     """
 
     gid = 0
@@ -898,6 +907,7 @@ def _write_standard(
     branding: BoardBranding | None,
     silk_gpio_paths_json: str | None = None,
     row_reverser: bool = True,
+    stem_neck_routing: bool = True,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
@@ -912,6 +922,7 @@ def _write_standard(
                 branding=branding,
                 silk_gpio_paths_json=silk_gpio_paths_json,
                 row_reverser=row_reverser,
+                stem_neck_routing=stem_neck_routing,
             ),
             f,
             indent=1,
@@ -944,6 +955,11 @@ def main() -> None:
         "--no-row-reverser",
         action="store_true",
         help="Omit row-reverser Top/Bottom copper TRACKs (same sketch as SVG preview).",
+    )
+    p.add_argument(
+        "--no-stem-neck-routing",
+        action="store_true",
+        help="Omit stem neck TopLayer TRACKs (straddle → left stem pins 2…; same as cyan preview).",
     )
     p.add_argument(
         "--silk-labels",
@@ -1085,6 +1101,7 @@ def main() -> None:
         silk_gpio_paths_json = profile.silk_gpio_paths_json
 
     row_reverser = not args.no_row_reverser
+    stem_neck_routing = not args.no_stem_neck_routing
 
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
@@ -1097,6 +1114,7 @@ def main() -> None:
                 branding=branding,
                 silk_gpio_paths_json=silk_gpio_paths_json,
                 row_reverser=row_reverser,
+                stem_neck_routing=stem_neck_routing,
             )
     else:
         out = args.output or _default_standard_path(
@@ -1109,6 +1127,7 @@ def main() -> None:
             branding=branding,
             silk_gpio_paths_json=silk_gpio_paths_json,
             row_reverser=row_reverser,
+            stem_neck_routing=stem_neck_routing,
         )
 
     if args.legacy_expanded:

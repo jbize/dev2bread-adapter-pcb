@@ -10,10 +10,9 @@ num_cols``) sit **between** the two holes, inset so no marker reaches pin **(N/2
 (waypoint ``k`` ↔ pin ``k``). Same-layer routes must not cross in ways that imply
 unintended connectivity; see ``docs/adapter-routing-invariants.md``.
 
-Markers are **discrete** (no bus along the straddle). Cyan paths to pin **k**: vertical
-down from the waypoint, then horizontal to ``(x_ln, pin k)`` (no lateral step at the neck).
-Waypoints are placed with **extra inset** toward the straddle center so those verticals sit
-clear of the hole columns. Pin 1 has no waypoint. Labels are temporary.
+Geometry matches ``adapter_gen/stem_neck_routing_mil`` (also used by the EasyEDA generator).
+Markers are **discrete** (no bus along the straddle). Pin 1 has no waypoint. Labels are
+temporary.
 """
 
 from __future__ import annotations
@@ -21,71 +20,22 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 
-from adapter_gen.geometry import HOLE_R, BoardParams, stem_layout_mil, stem_pin_y_mil
+from adapter_gen.geometry import BoardParams, stem_layout_mil, stem_pin_y_mil
 from adapter_gen.row_reverser_geometry import polyline_points_attr
 from adapter_gen.preview_waypoint_style import (
     LABEL_DY_MIL,
     LABEL_FONT_SIZE_MIL,
     MARKER_RADIUS_MIL,
     MARKER_STROKE_MIL,
-    MIN_TRACE_CENTER_PITCH_MIL,
     TRACE_WIDTH_MIL,
+)
+from adapter_gen.stem_neck_routing_mil import (
+    NECK_BEND_BELOW_PRIOR_PIN_MIL,
+    neck_stem_top_straddle_waypoints_mil,
 )
 
 _STROKE = "#5599dd"
 _WP_DOT_FILL = "#e8f4fc"
-# Mil past hole edge + marker radius so dots do not overlap drills or encroach pin (N/2+1).
-_EDGE_GAP_MIL = 1.5
-# Pull the waypoint chain toward straddle center (both sides) so vertical trace
-# centerlines clear hole copper; verticals still drop straight from each waypoint (x_m).
-_NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL = 8.0
-
-
-def neck_stem_top_straddle_waypoints_mil(
-    p: BoardParams,
-) -> list[tuple[float, float, int]]:
-    """Waypoints ``2 … num_cols`` strictly between stem pin 1 and pin (N/2+1) holes.
-
-    Pin 1 has no waypoint. Centers stay inside ``(x_ln, x_rn)`` with inset from ``HOLE_R``,
-    marker radius, plus ``_NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL`` so trace centerlines stay
-    past hole copper (``HOLE_R + trace/2 + TRACE_GAP`` from each column). Spacing uses at least
-    ``TRACE_WIDTH + TRACE_GAP`` when the usable span allows; otherwise compressed. The chain
-    is centered in the usable span when slack.
-    """
-    _, x_ln, x_rn, _ = stem_layout_mil(p)
-    nc = p.num_cols
-    # Need at least two interior waypoints (labels 2 and 3) for a meaningful split.
-    if nc < 3:
-        return []
-    # Same Y for all neck markers: top of pin-1 hole (not drill center — sits slightly up).
-    y_neck = stem_pin_y_mil(0, p) - HOLE_R
-    # Usable X between hole centers: marker clearance + squeeze toward center straddle.
-    inset = (
-        HOLE_R
-        + MARKER_RADIUS_MIL
-        + _EDGE_GAP_MIL
-        + _NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
-    )
-    x_left = x_ln + inset
-    x_right = x_rn - inset
-    span = x_right - x_left
-    if span <= 0.0:
-        return []
-
-    n_wp = nc - 1  # labels 2 .. nc (waypoint 1 omitted — same as pin 1)
-    natural = span / max(1, n_wp - 1)
-    min_pitch = MIN_TRACE_CENTER_PITCH_MIL
-    if (n_wp - 1) * min_pitch <= span:
-        pitch = max(min_pitch, natural)
-    else:
-        pitch = natural
-    total = (n_wp - 1) * pitch
-    x0 = x_left + (span - total) / 2.0
-    wpts: list[tuple[float, float, int]] = []
-    for k in range(n_wp):
-        seq = k + 2  # 2, 3, …, nc
-        wpts.append((x0 + k * pitch, y_neck, seq))
-    return wpts
 
 
 def append_neck_cyan_waypoints_svg(
@@ -121,13 +71,14 @@ def append_neck_cyan_waypoints_svg(
             "stroke-linecap": "round",
             "stroke-linejoin": "round",
             "aria-label": (
-                "Per net: vertical then horizontal to left stem pin (not a bus)"
+                "Per net: vertical to bend below prior pin, then straight to target pin"
             ),
         },
     )
     for x_m, y_m, seq in wpts:
         py = stem_pin_y_mil(seq - 1, p)
-        pts = [(x_m, y_m), (x_m, py), (x_ln, py)]
+        y_bend = stem_pin_y_mil(seq - 2, p) + NECK_BEND_BELOW_PRIOR_PIN_MIL
+        pts = [(x_m, y_m), (x_m, y_bend), (x_ln, py)]
         _sub(
             g_lines,
             "polyline",

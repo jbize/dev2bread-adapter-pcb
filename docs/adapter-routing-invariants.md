@@ -24,3 +24,6 @@ generated copper should stay consistent with them.
 - SVG preview paths are **discussion geometry** unless mirrored in EasyEDA export; they still
   should follow these invariants so previews do not suggest illegal same-layer shorts or
   ambiguous crossings.
+- **Stem neck (left column, nets 2…):** EasyEDA Standard output now includes TopLayer
+  ``TRACK`` segments from ``adapter_gen/stem_neck_routing_mil`` (same as the cyan neck preview).
+  Head-to-neck and pin-1 stem legs are still not auto-generated there.

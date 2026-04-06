@@ -25,6 +25,9 @@ Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb
   ./scripts/preview_adapter_board.py --profile resources/boards/example-14pin-7-per-row.toml
   ./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --no-branding
 
+  ./scripts/preview_adapter_board.py --pins 44 --silk numeric --bottom-only
+      # preview: bottom-copper trace strokes only (no top-layer sketch obscuring)
+
 Silk modes and branding (devkitc1 vs numeric vs auto, ``--no-branding``): see repository
 **README.md** (section **SVG preview**).
 
@@ -191,6 +194,18 @@ def main() -> None:
         action="store_true",
         help="Omit cyan neck (stem straddle) waypoint markers (preview only).",
     )
+    tb = p.add_mutually_exclusive_group()
+    tb.add_argument(
+        "--top-only",
+        action="store_true",
+        help="Preview only: draw Top-layer trace sketches (cyan strokes); hide Bottom (red).",
+    )
+    tb.add_argument(
+        "--bottom-only",
+        action="store_true",
+        help="Preview only: draw Bottom-layer trace strokes (red); hide Top sketches including "
+        "neck / top-row cyan.",
+    )
     args = p.parse_args()
     profile = None
     if args.profile is not None:
@@ -251,6 +266,13 @@ def main() -> None:
         profile.silk_gpio_paths_json if profile is not None else None
     )
 
+    if args.top_only:
+        preview_traces = "top"
+    elif args.bottom_only:
+        preview_traces = "bottom"
+    else:
+        preview_traces = "both"
+
     emit_board_svg(
         bp,
         out,
@@ -261,6 +283,7 @@ def main() -> None:
         silk_gpio_paths_json=silk_gpio_paths_json,
         top_row_cyan_waypoints=not args.no_top_row_cyan_waypoints,
         neck_cyan_waypoints=not args.no_neck_cyan_waypoints,
+        preview_traces=preview_traces,
     )
     print(out.resolve())
 

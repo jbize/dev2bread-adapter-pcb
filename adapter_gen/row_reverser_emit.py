@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
+from typing import Literal
 
 from adapter_gen.geometry import BoardParams
 from adapter_gen.reverser_head_stubs import reverser_head_stub_routing_mil
@@ -92,8 +93,15 @@ def append_row_reverser_svg(
     svg: ET.Element,
     p: BoardParams,
     _sub: Callable[..., ET.Element],
+    *,
+    preview_traces: Literal["both", "top", "bottom"] = "both",
 ) -> None:
-    """Append ``<g id=\"row-reverser\">`` children (same layout as prior ``svg_preview`` inline)."""
+    """Append ``<g id=\"row-reverser\">`` (same layout as prior ``svg_preview`` inline).
+
+    ``preview_traces`` (SVG only): ``top`` = cyan (Top copper) polylines + stub sketch;
+    ``bottom`` = red (Bottom copper) polylines; ``both`` = both. Vias draw whenever
+    geometry exists.
+    """
     y_pad = row_reverser_y_pad_row_a_innermost_mil(p)
     geom = compute_row_reverser_geometry_mil(p, y_pad_row=y_pad)
     if geom is None:
@@ -102,43 +110,47 @@ def append_row_reverser_svg(
     cyan = list(geom.cyan) + ([] if rhs is None else rhs.cyan_segments)
     tw = f"{geom.trace_stroke:.1f}"
     g_rr = _sub(svg, "g", {"id": "row-reverser"})
-    g_in = _sub(
-        g_rr,
-        "g",
-        {
-            "id": "row-reverser-inner",
-            "fill": "none",
-            "stroke": "#cc3333",
-            "stroke-width": tw,
-            "stroke-linecap": "round",
-            "stroke-linejoin": "round",
-        },
-    )
-    for seg in geom.red:
-        _sub(
-            g_in,
-            "polyline",
-            {"points": polyline_points_attr(seg)},
+    show_bottom = preview_traces in ("both", "bottom")
+    show_top = preview_traces in ("both", "top")
+    if show_bottom:
+        g_in = _sub(
+            g_rr,
+            "g",
+            {
+                "id": "row-reverser-inner",
+                "fill": "none",
+                "stroke": "#cc3333",
+                "stroke-width": tw,
+                "stroke-linecap": "round",
+                "stroke-linejoin": "round",
+            },
         )
-    g_out = _sub(
-        g_rr,
-        "g",
-        {
-            "id": "row-reverser-outer",
-            "fill": "none",
-            "stroke": "#5599dd",
-            "stroke-width": tw,
-            "stroke-linecap": "round",
-            "stroke-linejoin": "round",
-        },
-    )
-    for seg in cyan:
-        _sub(
-            g_out,
-            "polyline",
-            {"points": polyline_points_attr(seg)},
+        for seg in geom.red:
+            _sub(
+                g_in,
+                "polyline",
+                {"points": polyline_points_attr(seg)},
+            )
+    if show_top:
+        g_out = _sub(
+            g_rr,
+            "g",
+            {
+                "id": "row-reverser-outer",
+                "fill": "none",
+                "stroke": "#5599dd",
+                "stroke-width": tw,
+                "stroke-linecap": "round",
+                "stroke-linejoin": "round",
+            },
         )
-    if rhs is not None:
+        for seg in cyan:
+            _sub(
+                g_out,
+                "polyline",
+                {"points": polyline_points_attr(seg)},
+            )
+    if rhs is not None and show_top:
         g_wp = _sub(
             g_rr,
             "g",

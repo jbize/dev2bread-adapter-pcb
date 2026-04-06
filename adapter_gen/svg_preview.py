@@ -2,11 +2,15 @@
 
 The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_cols`` and the
 innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
+
+Preview **trace** visibility: ``preview_traces`` selects Top vs Bottom sketch strokes (cyan vs red
+in the row-reverser group, and top-row / neck cyan sketches are Top-only).
 """
 
 from __future__ import annotations
 
 import sys
+from typing import Literal
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -49,6 +53,7 @@ def emit_board_svg(
     silk_gpio_paths_json: str | None = None,
     top_row_cyan_waypoints: bool = True,
     neck_cyan_waypoints: bool = True,
+    preview_traces: Literal["both", "top", "bottom"] = "both",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     min_x, min_y, max_x, max_y = bounds_mil(p)
@@ -69,12 +74,18 @@ def emit_board_svg(
         title_bits.append(f"silk={silk_mode}")
     if branding is not None:
         title_bits.append("branding")
+    show_top_cyan = top_row_cyan_waypoints and preview_traces != "bottom"
+    show_neck_cyan = neck_cyan_waypoints and preview_traces != "bottom"
     if row_reverser:
         title_bits.append("row-A inner reverser sketch")
-    if top_row_cyan_waypoints:
+    if show_top_cyan:
         title_bits.append("cyan top-row waypoints")
-    if neck_cyan_waypoints:
+    if show_neck_cyan:
         title_bits.append("cyan neck waypoints")
+    if preview_traces == "top":
+        title_bits.append("preview traces top only")
+    elif preview_traces == "bottom":
+        title_bits.append("preview traces bottom only")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -126,7 +137,12 @@ def emit_board_svg(
         )
 
     if row_reverser:
-        append_row_reverser_svg(svg, p, _sub)
+        append_row_reverser_svg(
+            svg,
+            p,
+            _sub,
+            preview_traces=preview_traces,
+        )
 
     if silk_mode and silk_mode != "none":
         sd = (silk_dir or _DEFAULT_SILK_DIR).resolve()
@@ -212,9 +228,9 @@ def emit_board_svg(
                 _sub(g_btxt, "path", {"d": d_txt})
 
     # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
-    if top_row_cyan_waypoints:
+    if show_top_cyan:
         append_top_row_cyan_waypoints_svg(svg, p, _sub)
-    if neck_cyan_waypoints:
+    if show_neck_cyan:
         append_neck_cyan_waypoints_svg(svg, p, _sub)
 
     tree = ET.ElementTree(svg)
