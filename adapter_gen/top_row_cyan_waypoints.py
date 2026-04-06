@@ -15,7 +15,9 @@ from adapter_gen.preview_waypoint_style import (
     LABEL_FONT_SIZE_MIL,
     MARKER_RADIUS_MIL,
     MARKER_STROKE_MIL,
+    TRACE_WIDTH_MIL,
 )
+from adapter_gen.row_reverser_geometry import polyline_points_attr
 
 _STROKE = "#5599dd"
 # Discrete markers only — no segment connecting pads (that would imply a copper short).
@@ -37,6 +39,21 @@ def top_row_a_waypoints_left_to_right_mil(
     return y0, wpts
 
 
+def top_row_a_column_vertical_trace_points_mil(
+    p: BoardParams,
+) -> list[tuple[int, list[tuple[float, float]]]]:
+    """Per column: polyline points (outer row A → inner) at ``head_column_x_mil``, same net."""
+    ys = wide_head_y_rows_mil(p=p, from_row_a=True)
+    if len(ys) < 2:
+        return []
+    out: list[tuple[int, list[tuple[float, float]]]] = []
+    for col in range(p.num_cols):
+        x = head_column_x_mil(col, p)
+        pts = [(x, y) for y in ys]
+        out.append((col, pts))
+    return out
+
+
 def append_top_row_cyan_waypoints_svg(
     svg: ET.Element,
     p: BoardParams,
@@ -52,9 +69,36 @@ def append_top_row_cyan_waypoints_svg(
         "g",
         {
             "id": "cyan-top-row-waypoints",
-            "aria-label": "Top row (row A outer) waypoint markers; preview only, not copper",
+            "aria-label": "Top row (row A) cyan sketch; preview only, not copper",
         },
     )
+    tw = f"{TRACE_WIDTH_MIL:.1f}"
+    traces = top_row_a_column_vertical_trace_points_mil(p)
+    if traces:
+        g_tr = _sub(
+            g,
+            "g",
+            {
+                "id": "cyan-top-row-column-traces",
+                "fill": "none",
+                "stroke": _STROKE,
+                "stroke-width": tw,
+                "stroke-linecap": "round",
+                "stroke-linejoin": "round",
+                "aria-label": "Row-A vertical traces from outer waypoint to inner pads",
+            },
+        )
+        for col, pts in traces:
+            net_a = col + 1
+            _sub(
+                g_tr,
+                "polyline",
+                {
+                    "points": polyline_points_attr(pts),
+                    "data-col": str(col),
+                    "data-net-row-a": str(net_a),
+                },
+            )
     r = f"{MARKER_RADIUS_MIL:.2f}"
     sw = f"{MARKER_STROKE_MIL:.2f}"
     lbl_fs = f"{LABEL_FONT_SIZE_MIL:.1f}"

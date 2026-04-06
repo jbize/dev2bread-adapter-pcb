@@ -1,0 +1,24 @@
+---
+description: >-
+  Do not assume the user wants traces or geometry that short-circuit nets; stop
+  and ask for clarification instead of drawing implied electrical short circuits.
+alwaysApply: true
+---
+
+# No assumed short circuits — seek clarification
+
+These instructions are for the **AI assistant**, not as a user reminder.
+
+- When requirements are ambiguous, **do not** infer that the user wants **copper or preview
+  lines that would short-circuit** separate nets (e.g. one continuous trace tying many pads on
+  a row/column, bus lines across unrelated holes, or same-layer paths that imply unintended
+  connectivity).
+
+- **Stop and ask for clarification** rather than producing artwork that **short circuits**
+  the real electrical intent.
+
+- Informal wording is **not** permission to merge nets on a layer. If unsure whether a path
+  would create a **short circuit** between distinct signals, **ask first**.
+
+- This applies especially to **PCB geometry**, **layer discipline**, **preview SVG**, and
+  **EasyEDA / copper** in this repo. See `docs/adapter-routing-invariants.md`.
