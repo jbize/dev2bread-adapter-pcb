@@ -198,13 +198,15 @@ def main() -> None:
     tb.add_argument(
         "--top-only",
         action="store_true",
-        help="Preview only: draw Top-layer trace sketches (cyan strokes); hide Bottom (red).",
+        help="Preview only: Top copper only — cyan strokes (row-reverser, stubs, top-row, neck); "
+        "hide Bottom (red).",
     )
     tb.add_argument(
         "--bottom-only",
         action="store_true",
-        help="Preview only: draw Bottom-layer trace strokes (red); hide Top sketches including "
-        "neck / top-row cyan.",
+        help="Preview only: Bottom copper — red row-reverser strokes; hide Top (cyan). "
+        "Discrete red markers on the J3 straddle (same spots as cyan J3 neck) unless "
+        "--no-neck-cyan-waypoints.",
     )
     args = p.parse_args()
     profile = None

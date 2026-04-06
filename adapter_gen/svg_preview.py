@@ -3,8 +3,8 @@
 The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_cols`` and the
 innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
 
-Preview **trace** visibility: ``preview_traces`` selects Top vs Bottom sketch strokes (cyan vs red
-in the row-reverser group, and top-row / neck cyan sketches are Top-only).
+Preview **trace** visibility: ``preview_traces`` selects **Top copper** (cyan) vs **Bottom
+copper** (red) in the row-reverser group; top-row and neck sketches are Top-only (cyan).
 """
 
 from __future__ import annotations
@@ -24,6 +24,9 @@ from adapter_gen.geometry import (
 )
 from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.neck_cyan_waypoints import append_neck_cyan_waypoints_svg
+from adapter_gen.neck_j3_bottom_preview import (
+    append_neck_j3_stem_right_red_waypoints_svg,
+)
 from adapter_gen.wide_head_stub_stem_join_preview import (
     append_wide_head_stub_stem_join_svg,
 )
@@ -84,11 +87,13 @@ def emit_board_svg(
     if show_top_cyan:
         title_bits.append("cyan top-row waypoints")
     if show_neck_cyan:
-        title_bits.append("cyan neck waypoints")
+        title_bits.append("cyan neck J1 waypoints")
     if preview_traces == "top":
         title_bits.append("preview traces top only")
     elif preview_traces == "bottom":
         title_bits.append("preview traces bottom only")
+        if neck_cyan_waypoints:
+            title_bits.append("red stem J3 ref markers")
     title_bits.append("(mil, +Y down)")
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
@@ -238,6 +243,10 @@ def emit_board_svg(
             _sub,
             preview_traces=preview_traces,
         )
+
+    # Bottom-only: discrete red markers at J3 straddle (same layout as cyan J3 neck).
+    if preview_traces == "bottom" and neck_cyan_waypoints:
+        append_neck_j3_stem_right_red_waypoints_svg(svg, p, _sub)
 
     # After silk/branding so temp labels and cyan markers are not covered by stroke overlays.
     if show_top_cyan:

@@ -65,6 +65,35 @@ def neck_stem_top_straddle_waypoints_mil(
     return wpts
 
 
+def neck_stem_top_straddle_waypoints_right_mil(
+    p: BoardParams,
+) -> list[tuple[float, float, int]]:
+    """Waypoints for right-column pins ``(num_cols+2) … (2*num_cols)``, mirrored in X.
+
+    Same ``y_neck``, pitch, and count as ``neck_stem_top_straddle_waypoints_mil`` (left).
+    No waypoint for pin ``num_cols+1`` (J3 top / first right column), analogous to pin 1 left.
+    """
+    left = neck_stem_top_straddle_waypoints_mil(p)
+    if not left:
+        return []
+    nc = p.num_cols
+    _, x_ln, x_rn, _ = stem_layout_mil(p)
+    inset = (
+        HOLE_R
+        + MARKER_RADIUS_MIL
+        + _EDGE_GAP_MIL
+        + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
+    )
+    x_lo = x_ln + inset
+    x_hi = x_rn - inset
+    out: list[tuple[float, float, int]] = []
+    for x_m, y_m, seq_l in left:
+        x_mir = x_lo + x_hi - x_m
+        seq_r = seq_l + nc
+        out.append((x_mir, y_m, seq_r))
+    return out
+
+
 def neck_stem_left_net_trace_polyline_mil(
     p: BoardParams,
     seq: int,
@@ -86,4 +115,26 @@ def neck_stem_left_net_trace_polyline_mil(
         py = stem_pin_y_mil(seq - 1, p)
         y_bend = stem_pin_y_mil(seq - 2, p) + NECK_BEND_BELOW_PRIOR_PIN_MIL
         return [(x_m, y_m), (x_m, y_bend), (x_ln, py)]
+    return None
+
+
+def neck_stem_right_net_trace_polyline_mil(
+    p: BoardParams,
+    seq: int,
+) -> list[tuple[float, float]] | None:
+    """Three mil-space points for right stem net ``seq`` (num_cols+2..2*num_cols), or ``None``."""
+    nc = p.num_cols
+    if seq < nc + 2 or seq > 2 * nc:
+        return None
+    wpts = neck_stem_top_straddle_waypoints_right_mil(p)
+    if not wpts:
+        return None
+    _, _, x_rn, _ = stem_layout_mil(p)
+    for x_m, y_m, s in wpts:
+        if s != seq:
+            continue
+        row_idx = seq - nc - 1
+        py = stem_pin_y_mil(row_idx, p)
+        y_bend = stem_pin_y_mil(row_idx - 1, p) + NECK_BEND_BELOW_PRIOR_PIN_MIL
+        return [(x_m, y_m), (x_m, y_bend), (x_rn, py)]
     return None
