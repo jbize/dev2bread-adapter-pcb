@@ -21,7 +21,9 @@ silk_profile = "devkitc1"
 # The [branding] header must be present — do not comment it out while leaving text/image below.
 [branding]
 text = "Godswind Consulting"
-image = "resources/images/godswind-east.jpeg"
+image = "resources/images/godswind-east-purple.jpeg"
+# SVG preview only — warm gold complements the purple monochrome logo (EasyEDA JSON unchanged).
+preview_silk_color = "#E6B800"
 # font_size = matplotlib outline quality only; text is scaled to fill the branding text box.
 font_family = "DejaVu Serif"
 font_size = 96

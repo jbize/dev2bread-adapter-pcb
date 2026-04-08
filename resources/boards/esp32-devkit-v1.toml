@@ -20,7 +20,8 @@ silk_profile = "devkitc1"
 # Top Silk in the wide-head gap (same pattern as esp32-s3-devkitc-1). Use --no-branding to omit.
 [branding]
 text = "Godswind Consulting"
-image = "resources/images/godswind-east.jpeg"
+image = "resources/images/godswind-east-purple.jpeg"
+preview_silk_color = "#E6B800"
 font_family = "DejaVu Serif"
 font_size = 96
 font_weight = "normal"

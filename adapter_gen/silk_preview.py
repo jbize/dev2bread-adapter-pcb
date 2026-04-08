@@ -14,6 +14,8 @@ from typing import Any
 from adapter_gen.geometry import (
     PAD_SIZE,
     SILK_OFF_HEAD_MIL,
+    SILK_CONNECTOR_REF_MARGIN_PAST_PAD_MIL,
+    SILK_CONNECTOR_REF_STEM_STRADDLE_PAST_PAD_MIL,
     Y_W_ROW_A,
     BoardParams,
     head_column_x_mil,
@@ -21,6 +23,7 @@ from adapter_gen.geometry import (
     stem_pin_y_mil,
     stem_silk_x_mil_left_column,
     stem_silk_x_mil_right_column,
+    wide_head_y_rows_mil,
 )
 from adapter_gen.silk_bake import default_devkitc1_gpio_json_name
 
@@ -118,9 +121,79 @@ def load_silk_label_data(
         raw = json.loads(path.read_text(encoding="utf-8"))
         paths_map = raw["paths"]
         j1 = [str(i) for i in range(1, nc + 1)]
-        j3 = [str(nc + i) for i in range(1, nc + 1)]
+        j3 = [str(i) for i in range(1, nc + 1)]
         return paths_map, j1, j3, None
     raise ValueError(f"unknown silk mode: {mode!r}")
+
+
+def paths_map_with_connector_ref_glyphs(
+    paths_map: dict[str, str],
+    silk_dir: Path,
+) -> dict[str, str]:
+    """Ensure ``J1`` and ``J3`` path entries for connector refs (GPIO bakes omit them pre-fix)."""
+    if "J1" in paths_map and "J3" in paths_map:
+        return paths_map
+    num = (silk_dir / "numeric_silk_paths.json").resolve()
+    if not num.is_file():
+        return paths_map
+    raw = json.loads(num.read_text(encoding="utf-8"))
+    extra = raw.get("paths")
+    if not isinstance(extra, dict):
+        return paths_map
+    out = dict(paths_map)
+    if "J1" in extra:
+        out["J1"] = extra["J1"]
+    if "J3" in extra:
+        out["J3"] = extra["J3"]
+    return out
+
+
+def numeric_connector_header_centers_mil(
+    p: BoardParams,
+) -> list[tuple[str, float, float]]:
+    """(label, cx_mil, cy_mil) for numeric silk: **outside** pads, not on hole centers.
+
+    Anchor = pad center ± (pad radius + ``SILK_CONNECTOR_REF_MARGIN_PAST_PAD_MIL``) in the
+    outward direction: head col 0 **+X**, row A **−Y**, row B **+Y**.
+
+    Stem: **Y** = pin-1 row (``stem_pin_y_mil(0)``). J1 **X** = **−X** past the J1-side pin-1 pad
+    (``x_ln`` − pad radius − ``SILK_CONNECTOR_REF_STEM_STRADDLE_PAST_PAD_MIL``). J3 **X** = **+X**
+    past the J3-side pin-1 pad (mirror). Same past-pad distance as each other; tighter than
+    wide-head margin.
+    """
+    m = SILK_CONNECTOR_REF_MARGIN_PAST_PAD_MIL
+    pr = PAD_SIZE / 2.0
+    delta = pr + m
+    m_stem = SILK_CONNECTOR_REF_STEM_STRADDLE_PAST_PAD_MIL
+    ys_a = wide_head_y_rows_mil(p=p, from_row_a=True)
+    ys_b = wide_head_y_rows_mil(p=p, from_row_a=False)
+    x_pin1_out = head_column_x_mil(0, p) + delta
+    cy_j1_head = ys_a[0] - delta
+    cy_j3_head = ys_b[0] + delta
+    _, x_ln, x_rn, _ = stem_layout_mil(p)
+    cx_j1_stem_out = x_ln - pr - m_stem
+    cx_j3_stem_out = x_rn + pr + m_stem
+    cy_stem_pin1 = stem_pin_y_mil(0, p)
+    return [
+        ("J1", x_pin1_out, cy_j1_head),
+        ("J3", x_pin1_out, cy_j3_head),
+        ("J1", cx_j1_stem_out, cy_stem_pin1),
+        ("J3", cx_j3_stem_out, cy_stem_pin1),
+    ]
+
+
+def numeric_connector_ref_path_elements_mil(
+    p: BoardParams,
+    paths_map: dict[str, str],
+) -> list[str]:
+    """J1/J3 connector ref paths (numeric or devkitc GPIO silk); same centers as EasyEDA headers."""
+    if "J1" not in paths_map or "J3" not in paths_map:
+        return []
+    out: list[str] = []
+    for lab, cx_m, cy_m in numeric_connector_header_centers_mil(p):
+        d0 = paths_map[lab]
+        out.append(translate_silk_path_d_to_mil(d0, cx_m, cy_m))
+    return out
 
 
 def silk_path_elements_mil(
@@ -135,6 +208,10 @@ def silk_path_elements_mil(
 
     When ``vertical_head`` is True (devkitc1), head row glyphs are rotated so they do not
     overlap along X; stem labels stay horizontal.
+
+    Numeric J1/J3 connector refs are **not** included — emit those separately via
+    ``numeric_connector_ref_path_elements_mil`` after routing overlays in SVG preview so they
+    are not covered by trace strokes.
     """
     nc = p.num_cols
     yb = p.y_row_b

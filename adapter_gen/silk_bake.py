@@ -76,11 +76,15 @@ def default_devkitc1_gpio_json_name() -> str:
 def write_numeric_silk_json(out_path: Path, *, max_pin: int = 44) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     numeric_paths = {str(i): text_to_path_at_origin(str(i)) for i in range(1, max_pin + 1)}
+    numeric_paths["J1"] = text_to_path_at_origin("J1")
+    numeric_paths["J3"] = text_to_path_at_origin("J3")
     meta: dict[str, Any] = {
-        "variant": f"numeric-1-{max_pin}",
+        "variant": f"numeric-1-{max_pin}-j1-j3",
         "note": (
-            "Silk shows logical pin index 1–N (same as copper net labels). "
-            "Not board-vendor-specific."
+            "Per-pin silk: J1 side 1..N and J3 side 1..N (independent numbering, devkit style). "
+            "Plus connector refs J1 / J3 (head: past pad edges; stem: past pin-1 pads ±X same margin, "
+            "Y = pin-1 row; see silk_preview.numeric_connector_header_centers_mil). "
+            "Paths 1..max_pin are digit glyphs; N = adapter num_cols per row."
         ),
         "paths": numeric_paths,
     }
@@ -100,6 +104,9 @@ def write_gpio_silk_json(
     """Write vendor GPIO silk JSON (paths + j1/j3 order + optional board_id_silk)."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     paths = paths_map_for_labels(j1_order + j3_order)
+    # J1/J3 connector ref glyphs (same style as numeric); EasyEDA + SVG.
+    paths["J1"] = text_to_path_at_origin("J1")
+    paths["J3"] = text_to_path_at_origin("J3")
     meta: dict[str, Any] = {
         "variant": variant,
         "source": source,

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Extract branding IMAGE + TEXT from EasyEDA Standard JSON; render a tight SVG.
+"""Extract branding IMAGE + TEXT (+ SVGNODE logo) from EasyEDA Standard JSON; render SVG.
 
-Reads ``IMAGE~`` / ``TEXT~L~`` as written by ``append_branding_easyeda_shapes``
-(file units: 1 = 10 mil). Compare EasyEDA silk to preview without the rest of the board.
+Reads ``IMAGE~`` / ``TEXT~L~`` (file units: 1 = 10 mil). Our generator uses
+``~0~none~3~~5~`` for silk text; EasyEDA re-exports often use ``~0~0~3~~5~`` — both are
+accepted. Logos may be ``IMAGE~`` (base64 PNG) from our tool or ``SVGNODE~`` path data
+from the editor — both are handled when on Top Silk (layer 3).
 
 Usage (repo root)::
 
@@ -43,18 +45,47 @@ def _parse_image_shape(s: str) -> tuple[float, float, float, float, str] | None:
 def _parse_branding_text_shape(
     s: str,
 ) -> tuple[float, float, float, str, str] | None:
-    """Return (cx, cy, stroke file units), label, path d (file units), or None."""
+    """Return (cx, cy, stroke file units), label, path d (file units), or None.
+
+    Matches Top Silk ``TEXT~L~`` with ``…~(stroke)~(rot)~(fill)~3~~5~(label)~(path)~~(id)``.
+    ``fill`` is ``none`` from our emitter or ``0`` from EasyEDA export; ``id`` may have
+    extra trailing ``~`` from the editor.
+    """
     if not s.startswith("TEXT~L~"):
         return None
-    # Tail: ...~d~~ggeNNN
     m = re.match(
-        r"^TEXT~L~([^~]+)~([^~]+)~([^~]+)~0~none~3~~5~([^~]+)~(M.*)~~([^~]+)$",
+        r"^TEXT~L~([^~]+)~([^~]+)~([^~]+)~[^~]+~[^~]+~3~~5~([^~]+)~(M.*)~~([^~]+)~*$",
         s,
     )
     if not m:
         return None
     cx, cy, stroke, lab, d, _nid = m.groups()
     return float(cx), float(cy), float(stroke), lab, d
+
+
+def _parse_svgnode_silk_path(s: str) -> tuple[str, float] | None:
+    """Top Silk (layer 3) ``SVGNODE`` path ``d`` and stroke width in file units, or None."""
+    if not s.startswith("SVGNODE~"):
+        return None
+    try:
+        payload = json.loads(s.split("~", 1)[1])
+    except (json.JSONDecodeError, IndexError):
+        return None
+    if str(payload.get("layerid")) != "3":
+        return None
+    attrs = payload.get("attrs") or {}
+    d = attrs.get("d")
+    if not isinstance(d, str) or not d.strip():
+        return None
+    sw = attrs.get("stroke")
+    if sw == "none" or sw is None:
+        stroke_u = 0.5
+    else:
+        try:
+            stroke_u = float(sw)
+        except (TypeError, ValueError):
+            stroke_u = 0.5
+    return d, stroke_u
 
 
 def _path_bbox_file_units(d: str) -> tuple[float, float, float, float] | None:
@@ -82,14 +113,16 @@ def _union_bbox(
 def extract_branding_from_shapes(shapes: list) -> tuple[
     list[tuple[float, float, float, float, str]],
     list[tuple[float, float, float, str, str]],
+    list[tuple[str, float]],
 ]:
-    """Collect branding IMAGE(s) and the longest matching TEXT~L~ on Top Silk (layer 3).
+    """Collect branding IMAGE(s), longest TEXT~L~ on Top Silk, and SVGNODE paths (layer 3).
 
-    Heuristic: branding text has the **longest** ``d`` among ``TEXT~L~...~none~3~~5~...``
-    shapes (GPIO labels are shorter). All layer-3 ``IMAGE~`` shapes are kept (usually one).
+    Heuristic: branding text has the **longest** ``d`` among matching ``TEXT~L~`` shapes
+    (GPIO labels are shorter). All layer-3 ``IMAGE~`` and ``SVGNODE`` silk paths are kept.
     """
     images: list[tuple[float, float, float, float, str]] = []
     text_candidates: list[tuple[float, float, float, str, str]] = []
+    svgnode_paths: list[tuple[str, float]] = []
 
     for item in shapes:
         if not isinstance(item, str):
@@ -101,6 +134,9 @@ def extract_branding_from_shapes(shapes: list) -> tuple[
         tx = _parse_branding_text_shape(item)
         if tx is not None:
             text_candidates.append(tx)
+        sn = _parse_svgnode_silk_path(item)
+        if sn is not None:
+            svgnode_paths.append(sn)
 
     if not text_candidates:
         chosen: list[tuple[float, float, float, str, str]] = []
@@ -108,20 +144,30 @@ def extract_branding_from_shapes(shapes: list) -> tuple[
         longest = max(text_candidates, key=lambda t: len(t[4]))
         chosen = [longest]
 
-    return images, chosen
+    return images, chosen, svgnode_paths
 
 
 def emit_branding_svg(
     images: list[tuple[float, float, float, float, str]],
     texts: list[tuple[float, float, float, str, str]],
+    svgnode_paths: list[tuple[str, float]] | None = None,
     *,
     pad_mil: float = 24.0,
 ) -> str:
     """SVG document in mil, +Y down."""
+    if svgnode_paths is None:
+        svgnode_paths = []
     boxes: list[tuple[float, float, float, float]] = []
     for x, y, w, h, _b64 in images:
         boxes.append((x * 10.0, y * 10.0, (x + w) * 10.0, (y + h) * 10.0))
     for _cx, _cy, stroke, _lab, d in texts:
+        bb = _path_bbox_file_units(d)
+        if bb is not None:
+            minx, miny, maxx, maxy = bb
+            boxes.append(
+                (minx * 10.0, miny * 10.0, maxx * 10.0, maxy * 10.0),
+            )
+    for d, _sw in svgnode_paths:
         bb = _path_bbox_file_units(d)
         if bb is not None:
             minx, miny, maxx, maxy = bb
@@ -177,6 +223,15 @@ def emit_branding_svg(
         parts.append(
             f'<!-- label: {_xml_escape_attr(lab)} -->',
         )
+    for d, stroke_u in svgnode_paths:
+        sw = max(stroke_u * 10.0, 0.1)
+        d_mil = _path_d_file_to_mil(d)
+        parts.append(
+            f'<path fill="none" stroke="#88ddff" stroke-width="{sw:.2f}" '
+            f'stroke-linecap="round" stroke-linejoin="round" '
+            f'd="{_xml_escape_attr(d_mil)}"/>'
+        )
+        parts.append("<!-- SVGNODE (EasyEDA-export logo path) -->")
     parts.append("</svg>")
     return "\n".join(parts)
 
@@ -250,10 +305,10 @@ def main() -> None:
     if not isinstance(shapes, list):
         print("JSON missing shape[]", file=sys.stderr)
         raise SystemExit(1)
-    images, texts = extract_branding_from_shapes(shapes)
-    if not images and not texts:
+    images, texts, svgnode_paths = extract_branding_from_shapes(shapes)
+    if not images and not texts and not svgnode_paths:
         print(
-            "No branding IMAGE~ (layer 3) or TEXT~L~...~none~3~~5~... found.",
+            "No branding: IMAGE~ (layer 3), TEXT~L~…~3~~5~…, or SVGNODE (layer 3).",
             file=sys.stderr,
         )
     out = args.output
@@ -261,7 +316,9 @@ def main() -> None:
         out = _REPO / "out" / "preview" / f"{path.stem}-branding-only.svg"
     out = out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-    svg = emit_branding_svg(images, texts, pad_mil=args.pad_mil)
+    svg = emit_branding_svg(
+        images, texts, svgnode_paths, pad_mil=args.pad_mil
+    )
     out.write_text(svg, encoding="utf-8")
     print(out)
 

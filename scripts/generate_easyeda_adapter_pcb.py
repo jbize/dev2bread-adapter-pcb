@@ -22,8 +22,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
   * **Silk:** Optional pin-1 circles; optional per-pin text on wide head + stem — either
     **ESP32-S3-DevKitC-1 v1.1** names (`--silk-labels devkitc1`, baked paths in
     `out/intermediate/silk/devkitc1_gpio_silk_paths.json`) plus a two-line **board ID** in the neck,
-    or generic **1–44** (`--silk-labels numeric`,
-    `out/intermediate/silk/numeric_silk_paths.json`). Re-bake paths with
+    or generic **1..N on J1 and 1..N on J3** (`--silk-labels numeric`,
+    `out/intermediate/silk/numeric_silk_paths.json`). Both modes add **four J1/J3 connector ref**
+    labels (wide head + stem). Re-bake paths with
     `scripts/bake_devkitc_gpio_silk_paths.py` (reads `[silk_bake]` from
     `resources/boards/*.toml`; writes under `out/intermediate/silk/`; not committed).
 
@@ -92,7 +93,12 @@ try:
         append_stem_neck_left_easyeda_tracks,
         append_wide_head_stub_stem_join_easyeda_tracks,
     )
-    from adapter_gen.silk_preview import HEAD_SILK_ROTATE_DEG, rotate_silk_path_d
+    from adapter_gen.silk_preview import (
+        HEAD_SILK_ROTATE_DEG,
+        numeric_connector_header_centers_mil,
+        paths_map_with_connector_ref_glyphs,
+        rotate_silk_path_d,
+    )
 except ImportError as e:
     print(
         "Cannot import adapter_gen — run from the repository root.\n"
@@ -254,11 +260,29 @@ def _append_labeled_silk(
 
 
 def _numeric_silk_row_labels(bp: BoardParams) -> tuple[list[str], list[str]]:
-    """J1 side = 1..N, J3 side = N+1..2N (matches pad numbering)."""
+    """J1 and J3 each 1..N (independent devkit-style numbering per connector row)."""
     nc = bp.num_cols
     j1 = [str(i) for i in range(1, nc + 1)]
-    j3 = [str(i) for i in range(nc + 1, 2 * nc + 1)]
+    j3 = [str(i) for i in range(1, nc + 1)]
     return j1, j3
+
+
+def _append_numeric_connector_headers_silk(
+    shapes: list[str],
+    nid: Callable[[], str],
+    *,
+    paths_map: dict[str, str],
+    bp: BoardParams,
+) -> None:
+    """Top silk: four J1/J3 connector refs (wide head + stem); needs ``J1``/``J3`` glyph paths."""
+    if "J1" not in paths_map or "J3" not in paths_map:
+        return
+    for lab, cx_mil, cy_mil in numeric_connector_header_centers_mil(bp):
+        d0 = paths_map[lab]
+        cx = mil_to_u(cx_mil)
+        cy = mil_to_u(cy_mil)
+        dabs = _offset_silk_path_d(d0, cx, cy)
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
 
 
 def _silk_pin1_circles_mil(bp: BoardParams) -> list[tuple[float, float, float]]:
@@ -394,7 +418,9 @@ def build_standard_compressed(
             )
         else:
             raw = json.loads(data_path.read_text(encoding="utf-8"))
-            paths_map: dict[str, str] = raw["paths"]
+            paths_map = paths_map_with_connector_ref_glyphs(
+                raw["paths"], _intermediate_silk_dir()
+            )
             j1_full: list[str] = raw["j1_order"]
             j3_full: list[str] = raw["j3_order"]
             nc = bp.num_cols
@@ -421,6 +447,9 @@ def build_standard_compressed(
                     _append_devkitc_board_id_silk(
                         shapes, nid, lines=bid["lines"], bp=bp
                     )
+                _append_numeric_connector_headers_silk(
+                    shapes, nid, paths_map=paths_map, bp=bp
+                )
     elif silk_labels == "numeric":
         data_path = _intermediate_silk_dir() / "numeric_silk_paths.json"
         if not data_path.is_file():
@@ -431,7 +460,9 @@ def build_standard_compressed(
             )
         else:
             raw = json.loads(data_path.read_text(encoding="utf-8"))
-            paths_map = raw["paths"]
+            paths_map = paths_map_with_connector_ref_glyphs(
+                raw["paths"], _intermediate_silk_dir()
+            )
             j1, j3 = _numeric_silk_row_labels(bp)
             _append_labeled_silk(
                 shapes,
@@ -440,6 +471,9 @@ def build_standard_compressed(
                 j1=j1,
                 j3=j3,
                 bp=bp,
+            )
+            _append_numeric_connector_headers_silk(
+                shapes, nid, paths_map=paths_map, bp=bp
             )
 
     if branding is not None:
@@ -502,7 +536,7 @@ def build_standard_compressed(
     return {
         "head": {
             "docType": "3",
-            "editorVersion": "6.5.0",
+            "editorVersion": "6.5.54",
             "newgId": True,
             "c_para": {},
             "hasIdFlag": True,

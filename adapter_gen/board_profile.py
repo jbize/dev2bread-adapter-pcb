@@ -29,6 +29,8 @@ class BoardBranding:
     font_explicit: bool = False
     # True when ``image`` was set to a non-empty path in TOML (file must exist).
     image_explicit: bool = False
+    # SVG preview only: stroke color for branding text paths (EasyEDA JSON is unchanged).
+    preview_silk_color: str = "#ffcc00"
 
 
 @dataclass(frozen=True)
@@ -80,6 +82,15 @@ def _branding_font_fields(br: dict) -> tuple[str, float, str, str, bool]:
     return family, font_size_pt, weight, style, font_explicit
 
 
+def _preview_silk_color(br: dict) -> str:
+    """Optional ``[branding].preview_silk_color`` (hex); default gold for SVG preview."""
+    raw = br.get("preview_silk_color")
+    if raw is None:
+        return "#ffcc00"
+    s = str(raw).strip()
+    return s if s else "#ffcc00"
+
+
 def load_board_profile(path: Path) -> BoardProfile:
     raw = path.read_bytes()
     data = tomllib.loads(raw.decode("utf-8"))
@@ -126,6 +137,7 @@ def load_board_profile(path: Path) -> BoardProfile:
                 font_style=fst,
                 font_explicit=font_explicit,
                 image_explicit=image_explicit,
+                preview_silk_color=_preview_silk_color(br),
             )
 
     silk_gpio_paths_json: str | None = None

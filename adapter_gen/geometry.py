@@ -36,6 +36,11 @@ STEM_OUTLINE_MARGIN = 130.0
 SILK_OFF_HEAD_MIL = 110.0
 # Half of max span along Y of a rotated horizontal glyph (mil); ~max label width at bake size.
 SILK_VERTICAL_HALF_EXTENT_MIL = 75.0
+# Numeric silk: J1/J3 ref anchors — margin past pad/outline when insetting (mil), not on holes.
+# Head: +X from col 0; row A −Y; row B +Y.
+SILK_CONNECTOR_REF_MARGIN_PAST_PAD_MIL = 88.0
+# Stem J1/J3 connector refs outside straddle pin-1 pads: ±X from ``x_ln`` / ``x_rn`` (see silk_preview).
+SILK_CONNECTOR_REF_STEM_STRADDLE_PAST_PAD_MIL = 45.0
 # Board outline corner fillet (mil); clamped to ~half the shortest edge.
 BOARD_CORNER_RADIUS_MIL = 50.0
 

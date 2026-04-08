@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from adapter_gen.board_profile import BoardBranding
-from adapter_gen.branding import BRANDING_PREVIEW_SILK_COLOR, BRANDING_PREVIEW_STROKE_MIL
+from adapter_gen.branding import BRANDING_PREVIEW_STROKE_MIL
 from adapter_gen.geometry import (
     HOLE_R,
     BoardParams,
@@ -39,6 +39,8 @@ from adapter_gen.top_row_cyan_waypoints import append_top_row_cyan_waypoints_svg
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
     load_silk_label_data,
+    numeric_connector_ref_path_elements_mil,
+    paths_map_with_connector_ref_glyphs,
     silk_path_elements_mil,
 )
 
@@ -98,8 +100,8 @@ def emit_board_svg(
         title_bits.append("preview traces top only")
     elif preview_traces == "bottom":
         title_bits.append("preview traces bottom only")
-        if neck_cyan_waypoints:
-            title_bits.append("blue stem J3 ref markers (BottomLayer)")
+    if show_j3_head_row_columns and neck_cyan_waypoints:
+        title_bits.append("blue stem straddle→pin (BottomLayer)")
     if show_j3_head_row_columns:
         title_bits.append("blue J3 head row column traces (BottomLayer)")
         title_bits.append("blue J3 head to stem straddle joins (BottomLayer)")
@@ -161,6 +163,7 @@ def emit_board_svg(
             preview_traces=preview_traces,
         )
 
+    numeric_cref_ds: list[str] = []
     if silk_mode and silk_mode != "none":
         sd = (silk_dir or _DEFAULT_SILK_DIR).resolve()
         try:
@@ -170,6 +173,7 @@ def emit_board_svg(
                 p,
                 silk_gpio_paths_json=silk_gpio_paths_json,
             )
+            paths_map = paths_map_with_connector_ref_glyphs(paths_map, sd)
             ds = silk_path_elements_mil(
                 p,
                 paths_map,
@@ -177,6 +181,8 @@ def emit_board_svg(
                 j3,
                 vertical_head=(silk_mode == "devkitc1"),
             )
+            if silk_mode in ("numeric", "devkitc1"):
+                numeric_cref_ds = numeric_connector_ref_path_elements_mil(p, paths_map)
             if board_lines:
                 ds.extend(board_id_path_elements_mil(p, board_lines))
         except FileNotFoundError as e:
@@ -235,7 +241,7 @@ def emit_board_svg(
                 {
                     "id": "branding-text",
                     "fill": "none",
-                    "stroke": BRANDING_PREVIEW_SILK_COLOR,
+                    "stroke": branding.preview_silk_color,
                     "stroke-width": f"{BRANDING_PREVIEW_STROKE_MIL:.1f}",
                     "stroke-linejoin": "round",
                     "stroke-linecap": "round",
@@ -253,8 +259,8 @@ def emit_board_svg(
             preview_traces=preview_traces,
         )
 
-    # Bottom-only: discrete blue markers at J3 straddle (same layout as neck J1, mirrored).
-    if preview_traces == "bottom" and neck_cyan_waypoints:
+    # Right-stem BottomLayer preview (blue): straddle → pins — same as EasyEDA bottom routing.
+    if show_j3_head_row_columns and neck_cyan_waypoints:
         append_neck_j3_stem_right_red_waypoints_svg(svg, p, _sub)
 
     # After silk/branding so temp labels and TopLayer markers are not covered by stroke overlays.
@@ -265,6 +271,23 @@ def emit_board_svg(
         append_j3_head_to_right_stem_waypoint_join_svg(svg, p, _sub)
     if show_neck_cyan:
         append_neck_cyan_waypoints_svg(svg, p, _sub)
+
+    # J1/J3 connector refs (numeric or devkitc GPIO silk) on top of routing sketches.
+    if numeric_cref_ds:
+        g_cref = _sub(
+            svg,
+            "g",
+            {
+                "id": "silk-connector-refs",
+                "fill": "none",
+                "stroke": "#2a2a28",
+                "stroke-width": "6",
+                "stroke-linejoin": "round",
+                "stroke-linecap": "round",
+            },
+        )
+        for d_cref in numeric_cref_ds:
+            _sub(g_cref, "path", {"d": d_cref})
 
     tree = ET.ElementTree(svg)
     ET.indent(tree, space="  ")
