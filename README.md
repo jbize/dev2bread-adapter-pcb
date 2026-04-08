@@ -60,10 +60,18 @@ ruff format --check .
 
 GitHub Actions runs the same **`ruff check`** and **`ruff format --check`** on push and pull requests. Standards: **[docs/python-clean-code.md](docs/python-clean-code.md)**. Phased rollout checklist: **[docs/python-clean-code-tracker.md](docs/python-clean-code-tracker.md)**.
 
+**Regression checksums (bake + preview + EasyEDA for every board TOML):** after deleting **`out/`**, the script runs **`bake_devkitc_gpio_silk_paths.py --all`**, then **`preview_adapter_board.py`** and **`generate_easyeda_adapter_pcb.py`** per profile. It compares SHA256s to **`tests/baselines/out_manifest.sha256`**: raw bytes for **`.svg`**, and for **`.json`** a hash of **canonical JSON** (sorted keys) so baked silk under **`out/intermediate/silk/`** is verified even if key order differs. Refresh the baseline when outputs change on purpose:
+
+```bash
+./scripts/verify_board_outputs.py --update-baseline --no-branding   # stable; omits [branding] bitmap/text
+./scripts/verify_board_outputs.py --no-branding                     # check against baseline
+```
+
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
+| `scripts/verify_board_outputs.py` | Delete **`out/`**, bake silk, regenerate previews + Standard JSON for all **`resources/boards/*.toml`**, compare SHA256 to **`tests/baselines/out_manifest.sha256`**. |
 | `scripts/generate_easyeda_adapter_pcb.py` | Emit EasyEDA Standard PCB JSON (outline, pads, row-reverser Top/Bottom **TRACK**s, silk, branding). Use **`--no-row-reverser`** to omit reverser copper. |
 | `scripts/bake_devkitc_gpio_silk_paths.py` | Regenerate **`numeric_silk_paths.json`** and GPIO silk JSON from **`[silk_bake]`** in board TOMLs (needs **matplotlib**). |
 | `scripts/preview_adapter_board.py` | Board outline, holes, optional silk overlay, optional branding (SVG). |

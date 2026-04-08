@@ -19,3 +19,15 @@ jobs:
         run: ruff check .
       - name: Ruff format
         run: ruff format --check .
+
+  verify-outputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install matplotlib
+      - name: Verify preview + EasyEDA outputs vs baseline
+        run: python scripts/verify_board_outputs.py --no-branding
