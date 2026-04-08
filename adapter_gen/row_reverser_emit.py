@@ -40,7 +40,9 @@ ROUTING_VIA_OUTER_DIAM_MIL = 16.0
 ROUTING_VIA_HOLE_RADIUS_MIL = 4.0
 
 
-def _dedupe_via_centers_mil(centers: list[tuple[float, float]]) -> list[tuple[float, float]]:
+def _dedupe_via_centers_mil(
+    centers: list[tuple[float, float]],
+) -> list[tuple[float, float]]:
     seen: set[tuple[float, float]] = set()
     out: list[tuple[float, float]] = []
     for x, y in centers:
@@ -68,9 +70,7 @@ def append_row_reverser_easyeda_shapes(
     rhs = reverser_head_stub_routing_mil(p, y_pad_row=y_pad)
     cyan = list(geom.cyan) + ([] if rhs is None else rhs.cyan_segments)
 
-    def add_segments(
-        seg: list[tuple[float, float]], layer: str
-    ) -> None:
+    def add_segments(seg: list[tuple[float, float]], layer: str) -> None:
         if len(seg) < 2:
             return
         for i in range(len(seg) - 1):
@@ -89,9 +89,7 @@ def append_row_reverser_easyeda_shapes(
     d_u = mil_to_u(ROUTING_VIA_OUTER_DIAM_MIL)
     hr_u = mil_to_u(ROUTING_VIA_HOLE_RADIUS_MIL)
     for vx_m, vy_m in _dedupe_via_centers_mil(list(geom.vias)):
-        shapes.append(
-            f"VIA~{mil_to_u(vx_m)}~{mil_to_u(vy_m)}~{d_u}~~{hr_u}~{nid()}"
-        )
+        shapes.append(f"VIA~{mil_to_u(vx_m)}~{mil_to_u(vy_m)}~{d_u}~~{hr_u}~{nid()}")
 
 
 def append_row_reverser_svg(

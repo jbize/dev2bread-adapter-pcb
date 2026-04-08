@@ -49,12 +49,7 @@ def neck_stem_top_straddle_waypoints_mil(
         return []
     pr = pad_clearance_radius_mil(HOLE_R)
     y_neck = stem_pin_y_mil(0, p) - pr
-    inset = (
-        pr
-        + MARKER_RADIUS_MIL
-        + _EDGE_GAP_MIL
-        + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
-    )
+    inset = pr + MARKER_RADIUS_MIL + _EDGE_GAP_MIL + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
     x_left = x_ln + inset
     x_right = x_rn - inset
     span = x_right - x_left
@@ -91,12 +86,7 @@ def neck_stem_top_straddle_waypoints_right_mil(
     nc = p.num_cols
     _, x_ln, x_rn, _ = stem_layout_mil(p)
     pr = pad_clearance_radius_mil(HOLE_R)
-    inset = (
-        pr
-        + MARKER_RADIUS_MIL
-        + _EDGE_GAP_MIL
-        + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
-    )
+    inset = pr + MARKER_RADIUS_MIL + _EDGE_GAP_MIL + NECK_WAYPOINT_STRADDLE_SQUEEZE_MIL
     x_lo = x_ln + inset
     x_hi = x_rn - inset
     out: list[tuple[float, float, int]] = []

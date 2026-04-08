@@ -110,7 +110,9 @@ def _union_bbox(
     return minx, miny, maxx, maxy
 
 
-def extract_branding_from_shapes(shapes: list) -> tuple[
+def extract_branding_from_shapes(
+    shapes: list,
+) -> tuple[
     list[tuple[float, float, float, float, str]],
     list[tuple[float, float, float, str, str]],
     list[tuple[str, float]],
@@ -221,7 +223,7 @@ def emit_branding_svg(
         )
         parts.append(p_el)
         parts.append(
-            f'<!-- label: {_xml_escape_attr(lab)} -->',
+            f"<!-- label: {_xml_escape_attr(lab)} -->",
         )
     for d, stroke_u in svgnode_paths:
         sw = max(stroke_u * 10.0, 0.1)
@@ -278,8 +280,7 @@ def main() -> None:
         "json_path",
         type=Path,
         help=(
-            "Path to *.standard.json "
-            "(e.g. out/easyeda/<board>.devkitc1.standard.json)"
+            "Path to *.standard.json (e.g. out/easyeda/<board>.devkitc1.standard.json)"
         ),
     )
     p.add_argument(
@@ -316,9 +317,7 @@ def main() -> None:
         out = _REPO / "out" / "preview" / f"{path.stem}-branding-only.svg"
     out = out.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
-    svg = emit_branding_svg(
-        images, texts, svgnode_paths, pad_mil=args.pad_mil
-    )
+    svg = emit_branding_svg(images, texts, svgnode_paths, pad_mil=args.pad_mil)
     out.write_text(svg, encoding="utf-8")
     print(out)
 

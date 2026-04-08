@@ -187,12 +187,7 @@ def board_outline_polygon_mil(
     x_stem_l = x_ln - stem_om
     x_stem_r = x_rn + stem_om
     # Extend FR4 above row A so vertical silk fits between outline edge and pad holes.
-    y_top = (
-        Y_W_ROW_A
-        - SILK_OFF_HEAD_MIL
-        - SILK_VERTICAL_HALF_EXTENT_MIL
-        - margin
-    )
+    y_top = Y_W_ROW_A - SILK_OFF_HEAD_MIL - SILK_VERTICAL_HALF_EXTENT_MIL - margin
     y_bot = stem_pin_y_mil(nc - 1, p) + margin
     y_neck = y_stem_top - 50.0
     return [
@@ -400,9 +395,7 @@ def board_outline_polyline_mil(
     pts: list[Point2] = []
 
     def append_distinct(xy: Point2) -> None:
-        if not pts or (
-            abs(pts[-1][0] - xy[0]) > eps or abs(pts[-1][1] - xy[1]) > eps
-        ):
+        if not pts or (abs(pts[-1][0] - xy[0]) > eps or abs(pts[-1][1] - xy[1]) > eps):
             pts.append(xy)
 
     for fil in _outline_fillets(poly, r):

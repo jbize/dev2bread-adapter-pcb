@@ -54,16 +54,14 @@ def main() -> None:
         default=None,
         metavar="NAME",
         help=(
-            "Bake GPIO silk for resources/boards/<NAME>.toml "
-            "(must define [silk_bake])."
+            "Bake GPIO silk for resources/boards/<NAME>.toml (must define [silk_bake])."
         ),
     )
     ap.add_argument(
         "--all",
         action="store_true",
         help=(
-            "Bake numeric silk + GPIO silk for each board TOML with "
-            "[silk_bake].output."
+            "Bake numeric silk + GPIO silk for each board TOML with [silk_bake].output."
         ),
     )
     ap.add_argument(

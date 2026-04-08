@@ -144,7 +144,7 @@ def emit_svg(
         lines.append(f'    <polyline points="{polyline_points_attr(seg)}"/>')
 
     lines.append("  </g>")
-    lines.append('  <!-- Layer A: cyan diagonals -->')
+    lines.append("  <!-- Layer A: cyan diagonals -->")
     lines.append('  <g class="trace-cyan" aria-label="outer layer diagonals">')
 
     for seg in geom.cyan:
@@ -179,7 +179,9 @@ def emit_svg(
     lines.append("  </g>")
 
     span_note = f"dy={dy:.1f} mil" + (
-        f", max_y_span={max_y_span:.0f}" if max_y_span is not None else f", trace_gap={trace_gap:.0f}"
+        f", max_y_span={max_y_span:.0f}"
+        if max_y_span is not None
+        else f", trace_gap={trace_gap:.0f}"
     )
     lines.append(
         f'  <text x="{cx_note:.1f}" y="-78" text-anchor="middle" class="note">'

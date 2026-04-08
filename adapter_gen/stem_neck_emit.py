@@ -42,9 +42,7 @@ def _append_track_polyline_segments(
         x2, y2 = pts[i + 1]
         u1, u2 = mil_to_u(x1), mil_to_u(y1)
         u3, u4 = mil_to_u(x2), mil_to_u(y2)
-        shapes.append(
-            f"TRACK~{sw}~{layer}~~{u1} {u2} {u3} {u4}~{nid()}~0"
-        )
+        shapes.append(f"TRACK~{sw}~{layer}~~{u1} {u2} {u3} {u4}~{nid()}~0")
 
 
 def append_wide_head_stub_stem_join_easyeda_tracks(

@@ -249,13 +249,17 @@ def _append_labeled_silk(
         d0 = paths_map[lab]
         cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_left, cy)
-        shapes.append(f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(
+            f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}"
+        )
     for i in range(bp.num_cols):
         lab = j3[i]
         d0 = paths_map[lab]
         cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_right, cy)
-        shapes.append(f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(
+            f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}"
+        )
 
 
 def _numeric_silk_row_labels(bp: BoardParams) -> tuple[list[str], list[str]]:
@@ -323,8 +327,16 @@ def build_standard_compressed(
         raise ValueError(f"invalid silk_labels: {silk_labels!r}")
 
     margin = margin_mil if margin_mil is not None else MARGIN
-    stem_om = stem_outline_margin_mil if stem_outline_margin_mil is not None else STEM_OUTLINE_MARGIN
-    head_ex = head_outline_extra_mil if head_outline_extra_mil is not None else HEAD_OUTLINE_EXTRA
+    stem_om = (
+        stem_outline_margin_mil
+        if stem_outline_margin_mil is not None
+        else STEM_OUTLINE_MARGIN
+    )
+    head_ex = (
+        head_outline_extra_mil
+        if head_outline_extra_mil is not None
+        else HEAD_OUTLINE_EXTRA
+    )
 
     gid = 0
 
@@ -368,9 +380,7 @@ def build_standard_compressed(
             shapes.append(
                 f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
             )
-        shapes.append(
-            f"PAD~ELLIPSE~{x_ln_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
-        )
+        shapes.append(f"PAD~ELLIPSE~{x_ln_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}")
 
     # Wide side B: PTH pads only.
     nc = bp.num_cols
@@ -383,9 +393,7 @@ def build_standard_compressed(
             shapes.append(
                 f"PAD~ELLIPSE~{x}~{mil_to_u(yk)}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
             )
-        shapes.append(
-            f"PAD~ELLIPSE~{x_rn_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}"
-        )
+        shapes.append(f"PAD~ELLIPSE~{x_rn_u}~{y_s}~{pw}~{pw}~11~~{num}~{hr}~~0~{nid()}")
 
     if row_reverser:
         append_row_reverser_easyeda_shapes(shapes, nid, p=bp, mil_to_u=mil_to_u)
@@ -496,9 +504,7 @@ def build_standard_compressed(
     # Canvas / origin — place origin near lower-left of content (file units)
     ox = (xa + xb) / 2
     oy = (ya + yd) / 2
-    canvas = (
-        f"CA~2400~2400~#000000~yes~#FFFFFF~10~1200~1200~line~1~mil~1~45~visible~0.5~{ox}~{oy}~0~yes"
-    )
+    canvas = f"CA~2400~2400~#000000~yes~#FFFFFF~10~1200~1200~line~1~mil~1~45~visible~0.5~{ox}~{oy}~0~yes"
 
     layers = [
         "1~TopLayer~#FF0000~true~true~true~",
@@ -613,9 +619,7 @@ def build_legacy_expanded() -> dict:
             "pointArr": [{"x": xa, "y": ya}, {"x": xb, "y": yb}],
             "strokeWidth": OUTLINE_STROKE,
         }
-        signals[""].append(
-            {"gId": oid, "cmd": "TRACK", "layerid": 10, "fid": 0}
-        )
+        signals[""].append({"gId": oid, "cmd": "TRACK", "layerid": 10, "fid": 0})
 
     def add_signal(net: str, obj: dict, cmd: str) -> None:
         signals[net].append(
@@ -1140,11 +1144,7 @@ def main() -> None:
         profile = load_board_profile(boards_dir(repo) / f"{args.board}.toml")
 
     branding: BoardBranding | None = None
-    if (
-        profile is not None
-        and profile.branding is not None
-        and not args.no_branding
-    ):
+    if profile is not None and profile.branding is not None and not args.no_branding:
         branding = profile.branding
 
     if args.branding_font_family is not None:

@@ -276,7 +276,10 @@ def _load_image_png_rgba(
     except OSError as e:
         if strict:
             raise RuntimeError(f"Could not read branding image {path}: {e}") from e
-        print(f"Warning: could not read branding image {path}: {e}. Skipping.", file=sys.stderr)
+        print(
+            f"Warning: could not read branding image {path}: {e}. Skipping.",
+            file=sys.stderr,
+        )
         return None
 
     w_px, h_px = im.size
@@ -371,9 +374,7 @@ def build_branding_svg_overlay(
         return None
     images: list[tuple[float, float, float, float, str]] = []
     if lay.has_png and lay.png_bytes is not None:
-        uri = "data:image/png;base64," + base64.b64encode(lay.png_bytes).decode(
-            "ascii"
-        )
+        uri = "data:image/png;base64," + base64.b64encode(lay.png_bytes).decode("ascii")
         images.append(
             (
                 lay.img_left_mil,

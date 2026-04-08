@@ -261,11 +261,7 @@ def main() -> None:
         silk_dir = silk_dir.resolve()
 
     branding = None
-    if (
-        profile is not None
-        and profile.branding is not None
-        and not args.no_branding
-    ):
+    if profile is not None and profile.branding is not None and not args.no_branding:
         branding = profile.branding
 
     if args.branding_font_family is not None:
@@ -285,9 +281,7 @@ def main() -> None:
     else:
         row_reverser = True
 
-    silk_gpio_paths_json = (
-        profile.silk_gpio_paths_json if profile is not None else None
-    )
+    silk_gpio_paths_json = profile.silk_gpio_paths_json if profile is not None else None
 
     if args.top_only:
         preview_traces = "top"

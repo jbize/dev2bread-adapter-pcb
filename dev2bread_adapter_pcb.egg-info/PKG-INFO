@@ -1,3 +1,12 @@
+Metadata-Version: 2.4
+Name: dev2bread-adapter-pcb
+Version: 0.0.0
+Summary: T-shaped dev-board to breadboard adapter — EasyEDA JSON + SVG preview
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: ruff>=0.8; extra == "dev"
+
 # dev2bread-adapter-pcb
 
 T-shaped **44-pin** adapter PCB: wide head for a development board (e.g. ESP32 class, ~1.1″ row spacing) and narrow stem for a solderless breadboard (~0.5″ straddle). **1:1** routing (logical pin 1→1 … 44→44).
@@ -47,18 +56,6 @@ Scripts are executable and use `#!/usr/bin/env python3`. Import `out/easyeda/<bo
 Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)** (includes a short **SVG preview** subsection). For **AI / handoff / picking up later** (terminology, silk modes, TOML vs silk vs copper, which `.py` files are new vs legacy, pitfalls): **[docs/PROMPT_CONTEXT.md](docs/PROMPT_CONTEXT.md)** — start with **“Picking up later (resume checklist)”** there.
 
 **`resources/images/`** holds reference photos (e.g. DevKit module, **breadboard misfitment**). Optional **silk artwork** for bitmap branding in EasyEDA can live there too.
-
-### Lint (local + CI)
-
-Python **3.11+**. With a venv (e.g. **`.venv`** at the repo root):
-
-```bash
-pip install -e ".[dev]"   # ruff
-ruff check .
-ruff format --check .
-```
-
-GitHub Actions runs the same **`ruff check`** and **`ruff format --check`** on push and pull requests. Standards: **[docs/python-clean-code.md](docs/python-clean-code.md)**. Phased rollout checklist: **[docs/python-clean-code-tracker.md](docs/python-clean-code-tracker.md)**.
 
 ## Scripts
 

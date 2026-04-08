@@ -42,9 +42,7 @@ def _path_to_d(path: MPath) -> str:
     return " ".join(parts)
 
 
-def text_to_path_at_origin(
-    label: str, *, target_h: float = TARGET_H_FILE
-) -> str:
+def text_to_path_at_origin(label: str, *, target_h: float = TARGET_H_FILE) -> str:
     fp = FontProperties(family="DejaVu Sans", size=72)
     tp = TextPath((0, 0), label, prop=fp)
     path = MPath(tp.vertices, tp.codes)
@@ -53,11 +51,7 @@ def text_to_path_at_origin(
     scale = target_h / h
     cx = (bb.x0 + bb.x1) / 2.0
     cy = (bb.y0 + bb.y1) / 2.0
-    trans = (
-        Affine2D()
-        .translate(-cx, -cy)
-        .scale(scale, -scale)
-    )
+    trans = Affine2D().translate(-cx, -cy).scale(scale, -scale)
     p2 = path.transformed(trans)
     return _path_to_d(p2)
 
@@ -74,7 +68,9 @@ def default_devkitc1_gpio_json_name() -> str:
 
 def write_numeric_silk_json(out_path: Path, *, max_pin: int = 44) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    numeric_paths = {str(i): text_to_path_at_origin(str(i)) for i in range(1, max_pin + 1)}
+    numeric_paths = {
+        str(i): text_to_path_at_origin(str(i)) for i in range(1, max_pin + 1)
+    }
     numeric_paths["J1"] = text_to_path_at_origin("J1")
     numeric_paths["J3"] = text_to_path_at_origin("J3")
     meta: dict[str, Any] = {
@@ -169,12 +165,16 @@ def bake_gpio_from_board_toml(
     j1 = sb.get("j1_labels")
     j3 = sb.get("j3_labels")
     if not isinstance(j1, list) or not isinstance(j3, list):
-        raise ValueError(f"{toml_path}: [silk_bake].j1_labels and j3_labels must be arrays")
+        raise ValueError(
+            f"{toml_path}: [silk_bake].j1_labels and j3_labels must be arrays"
+        )
     j1s = [str(x) for x in j1]
     j3s = [str(x) for x in j3]
 
-    ap = adapter_pins_override if adapter_pins_override is not None else int(
-        raw["adapter_pins"]
+    ap = (
+        adapter_pins_override
+        if adapter_pins_override is not None
+        else int(raw["adapter_pins"])
     )
     nc = ap // 2
     if ap % 2 != 0:

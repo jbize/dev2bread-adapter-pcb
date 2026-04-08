@@ -2,6 +2,8 @@
 
 Audience: humans and tooling. Goal: code that is **correct**, **readable**, **maintainable**, and **safe to change**—especially for geometry, silk, and export paths where silent mistakes become bad boards.
 
+For a **phased checklist** (tooling, hygiene, types, DRY), see **[python-clean-code-tracker.md](python-clean-code-tracker.md)**.
+
 ---
 
 ## 1. Non‑negotiables
