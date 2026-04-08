@@ -299,7 +299,7 @@ class _OutlineFillet:
     sweep_svg: Literal[0, 1]
 
 
-def _svg_arc_sweep_y_down(t1: Point2, t2: Point2, c: Point2) -> int:
+def _svg_arc_sweep_y_down(t1: Point2, t2: Point2, c: Point2) -> Literal[0, 1]:
     """Sweep flag for the short arc t1→t2 in SVG user space (+Y down)."""
     ax, ay = t1[0] - c[0], t1[1] - c[1]
     bx, by = t2[0] - c[0], t2[1] - c[1]
@@ -427,11 +427,11 @@ def board_outline_svg_path_d(
     )
     r = _effective_corner_radius_mil(poly, corner_radius_mil)
     if r <= 0.0:
-        parts = [f"M {poly[0][0]:.2f} {poly[0][1]:.2f}"]
+        line_parts = [f"M {poly[0][0]:.2f} {poly[0][1]:.2f}"]
         for x, y in poly[1:]:
-            parts.append(f"L {x:.2f} {y:.2f}")
-        parts.append("Z")
-        return " ".join(parts)
+            line_parts.append(f"L {x:.2f} {y:.2f}")
+        line_parts.append("Z")
+        return " ".join(line_parts)
 
     parts: list[str] = []
     for i, fil in enumerate(_outline_fillets(poly, r)):

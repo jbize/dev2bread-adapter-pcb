@@ -1,0 +1,8 @@
+# Install: pip install pre-commit && pre-commit install
+# Mirrors CI: ruff lint + format (see .github/workflows/ci.yml). Run mypy manually or in CI.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+      - id: ruff-format

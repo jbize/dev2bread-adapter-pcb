@@ -117,8 +117,8 @@ def load_board_profile(path: Path) -> BoardProfile:
         img_raw = br.get("image")
         img_path: Path | None = None
         if img_raw is not None and str(img_raw).strip() != "":
-            raw = str(img_raw).strip()
-            pimg = Path(raw)
+            img_rel = str(img_raw).strip()
+            pimg = Path(img_rel)
             repo = _repo_root_from_board_profile(path)
             img_path = pimg.resolve() if pimg.is_absolute() else (repo / pimg).resolve()
         if text is not None or img_path is not None:

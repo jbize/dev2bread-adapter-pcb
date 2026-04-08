@@ -149,6 +149,7 @@ def _compute_row_reverser_core(
             x_lo, x_hi = (x_end, x_e) if x_end < x_e else (x_e, x_end)
             use_bend = xp is not None and x_lo - 1e-3 <= xp <= x_hi + 1e-3
             if use_bend:
+                assert xp is not None
                 red.append([(x_e, y_e), (xp, y_e), (x_end, y_i)])
             else:
                 red.append([(x_e, y_e), (x_end, y_i)])

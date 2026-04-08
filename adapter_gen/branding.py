@@ -19,8 +19,9 @@ import io
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal, cast
 
+import numpy as np
 from matplotlib.font_manager import FontProperties, fontManager
 from matplotlib.path import Path as MPath
 from matplotlib.text import TextPath
@@ -36,11 +37,12 @@ from adapter_gen.geometry import (
 def branding_font_properties(b: BoardBranding) -> FontProperties:
     """Matplotlib font for branding text outlines (EasyEDA + SVG)."""
     primary = (b.font_family or "").strip() or "DejaVu Sans"
+    style = cast(Literal["normal", "italic", "oblique"], b.font_style)
     return FontProperties(
         family=primary,
         size=b.font_size_pt,
         weight=b.font_weight,
-        style=b.font_style,
+        style=style,
     )
 
 
@@ -130,6 +132,8 @@ def _compute_branding_layout(
     png_ok = False
 
     if has_img:
+        img_path = branding.image_path
+        assert img_path is not None
         if has_txt:
             img_max_w = max(10.0, 0.5 * (iw - gap))
             img_max_h = ih
@@ -137,7 +141,7 @@ def _compute_branding_layout(
             img_max_w = iw
             img_max_h = ih
         loaded = _load_image_png_rgba(
-            branding.image_path,
+            img_path,
             max_width_mil=img_max_w,
             max_height_mil=img_max_h,
             strict=branding.image_explicit,
@@ -154,7 +158,9 @@ def _compute_branding_layout(
     has_text_out = False
 
     if has_txt:
-        text_label = branding.text.strip()
+        bt = branding.text
+        assert bt is not None
+        text_label = bt.strip()
         fp = branding_font_properties(branding)
         if has_img and png_ok:
             tx_left = il + img_w + gap
@@ -192,8 +198,8 @@ def _compute_branding_layout(
 
 def _path_to_d(path: MPath) -> str:
     path = path.interpolated(10)
-    verts = path.vertices
-    codes = path.codes
+    verts = np.asarray(path.vertices, dtype=np.float64)
+    codes = np.asarray(path.codes, dtype=np.int_)
     parts: list[str] = []
     i = 0
     while i < len(verts):
@@ -259,7 +265,7 @@ def _load_image_png_rgba(
 ) -> tuple[bytes, float, float] | None:
     """Return PNG bytes and (width_mil, height_mil), uniform scale, no distortion."""
     try:
-        from PIL import Image  # type: ignore[import-untyped]
+        from PIL import Image
     except ImportError:
         if strict:
             raise RuntimeError(

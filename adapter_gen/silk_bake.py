@@ -11,6 +11,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MPath
 from matplotlib.text import TextPath
@@ -22,8 +23,8 @@ TARGET_H_FILE = 4.5  # ~45 mil letter height in EasyEDA file units (÷10 = mil)
 def _path_to_d(path: MPath) -> str:
     """Flatten to M/L/Z only (EasyEDA-style), coordinates as in matplotlib space."""
     path = path.interpolated(10)
-    verts = path.vertices
-    codes = path.codes
+    verts = np.asarray(path.vertices, dtype=np.float64)
+    codes = np.asarray(path.codes, dtype=np.int_)
     parts: list[str] = []
     i = 0
     while i < len(verts):

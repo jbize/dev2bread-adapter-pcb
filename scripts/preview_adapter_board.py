@@ -41,6 +41,7 @@ import argparse
 import sys
 from dataclasses import replace
 from pathlib import Path
+from typing import Literal
 
 # Repo root on path
 _ROOT = Path(__file__).resolve().parent.parent
@@ -283,6 +284,7 @@ def main() -> None:
 
     silk_gpio_paths_json = profile.silk_gpio_paths_json if profile is not None else None
 
+    preview_traces: Literal["both", "top", "bottom"]
     if args.top_only:
         preview_traces = "top"
     elif args.bottom_only:

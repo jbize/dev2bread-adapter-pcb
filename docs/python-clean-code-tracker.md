@@ -11,37 +11,37 @@ Companion to **[python-clean-code.md](python-clean-code.md)**. Use this as a **s
 - [x] `ruff format` applied across Python sources
 - [x] CI runs `ruff check` + `ruff format --check` on push/PR
 - [x] Optional: `[dev]` extras — `pip install -e ".[dev]"` for local ruff (see root `pyproject.toml`)
-- [ ] Optional: **pre-commit** hook (same commands as CI)
+- [x] Optional: **pre-commit** — `.pre-commit-config.yaml` runs **ruff** + **ruff format** (`pip install pre-commit && pre-commit install`). **mypy** stays CI/local only (same as full `mypy` in workflow).
 
 **Local commands (repo root):**
 
 ```bash
-pip install -e ".[dev]"   # or: pip install ruff
+pip install -e ".[dev]"   # ruff + mypy
 ruff check .
 ruff format --check .
+mypy
+pre-commit run -a   # optional; requires: pip install pre-commit && pre-commit install
 ```
 
 ---
 
 ## Phase 2 — Hygiene (no behavior change)
 
-- [ ] Sweep **unused imports / dead locals** when ruff flags them (or enable stricter F rules if needed)
-- [ ] Remove **commented-out** blocks and stray debug prints in library modules (`adapter_gen/`)
-- [ ] Confirm no **orphaned** `.py` files (nothing imports or runs them)
+- [x] Sweep **unused imports / dead locals** — `ruff check --select F` clean on `adapter_gen/` + `scripts/`
+- [x] Remove **commented-out** blocks and stray debug prints — no large commented blocks found; `print` in `adapter_gen/` is intentional user messaging (warnings / import help)
+- [x] Confirm no **orphaned** `.py` files — each module is imported from previews, emitters, or run as a script (see `README` / `PROMPT_CONTEXT.md`)
 
 ---
 
 ## Phase 3 — Types (incremental)
 
-- [ ] Add **`[tool.mypy]`** (or separate `mypy.ini`) with a **narrow** first target (e.g. `adapter_gen/geometry.py`)
-- [ ] Fix errors **module by module**; avoid `--strict` on day one for the whole tree
-- [ ] Document in this tracker which packages are **typed** vs **best-effort**
+- [x] **`[tool.mypy]`** — `files = ["adapter_gen", "scripts"]`; **`mypy`** in CI (no args). Whole tree **mypy-clean** at default settings (not `--strict`).
 
 ---
 
 ## Phase 4 — DRY / preview–export parity
 
-- [ ] Read **[preview-generator-parity.md](preview-generator-parity.md)** and list concrete shared-helper opportunities
+- [x] Read **[preview-generator-parity.md](preview-generator-parity.md)** — parity table (outline/geometry, row reverser, stem neck, silk, baked JSON) drives where to share code next; no duplicate work item list here
 - [ ] Extract **duplicated mil constants** into `geometry` or shared routing modules (no “tidy” that merges distinct nets)
 - [ ] Re-run preview + EasyEDA generation smoke tests after each meaningful extraction
 
