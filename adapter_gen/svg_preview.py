@@ -12,9 +12,9 @@ Bottom-only or both (blue).
 from __future__ import annotations
 
 import sys
-from typing import Literal
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Literal
 
 from adapter_gen.board_profile import BoardBranding
 from adapter_gen.branding import BRANDING_PREVIEW_STROKE_MIL
@@ -25,23 +25,23 @@ from adapter_gen.geometry import (
     board_outline_svg_path_d,
     bounds_mil,
 )
-from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.neck_cyan_waypoints import append_neck_cyan_waypoints_svg
 from adapter_gen.neck_j3_bottom_preview import (
     append_j3_head_to_right_stem_waypoint_join_svg,
     append_neck_j3_stem_right_red_waypoints_svg,
     append_wide_head_j3_row_column_traces_svg,
 )
-from adapter_gen.wide_head_stub_stem_join_preview import (
-    append_wide_head_stub_stem_join_svg,
-)
-from adapter_gen.top_row_cyan_waypoints import append_top_row_cyan_waypoints_svg
+from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.silk_preview import (
     board_id_path_elements_mil,
     load_silk_label_data,
     numeric_connector_ref_path_elements_mil,
     paths_map_with_connector_ref_glyphs,
     silk_path_elements_mil,
+)
+from adapter_gen.top_row_cyan_waypoints import append_top_row_cyan_waypoints_svg
+from adapter_gen.wide_head_stub_stem_join_preview import (
+    append_wide_head_stub_stem_join_svg,
 )
 
 # Baked silk JSON (``scripts/bake_devkitc_gpio_silk_paths.py``).

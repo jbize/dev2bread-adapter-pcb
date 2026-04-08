@@ -157,24 +157,43 @@ def header_branding_region_mil(p: BoardParams) -> tuple[float, float, float, flo
     return (left, top, width, height)
 
 
-def board_outline_polygon_mil(p: BoardParams) -> list[Point2]:
-    """Closed T outline (CCW), sharp corners — same vertices as legacy."""
+def board_outline_polygon_mil(
+    p: BoardParams,
+    *,
+    margin_mil: float | None = None,
+    head_outline_extra_mil: float | None = None,
+    stem_outline_margin_mil: float | None = None,
+) -> list[Point2]:
+    """Closed T outline (CCW), sharp corners — same vertices as legacy.
+
+    Optional overrides default to module constants ``MARGIN``, ``HEAD_OUTLINE_EXTRA``,
+    ``STEM_OUTLINE_MARGIN`` (mil).
+    """
+    margin = MARGIN if margin_mil is None else margin_mil
+    head_ex = (
+        HEAD_OUTLINE_EXTRA if head_outline_extra_mil is None else head_outline_extra_mil
+    )
+    stem_om = (
+        STEM_OUTLINE_MARGIN
+        if stem_outline_margin_mil is None
+        else stem_outline_margin_mil
+    )
     _, x_ln, x_rn, y_stem_top = stem_layout_mil(p)
     nc = p.num_cols
-    x_left = X0 - MARGIN
-    x_right = X0 + (nc - 1) * PITCH + MARGIN
-    x_head_l = x_left - HEAD_OUTLINE_EXTRA
-    x_head_r = x_right + HEAD_OUTLINE_EXTRA
-    x_stem_l = x_ln - STEM_OUTLINE_MARGIN
-    x_stem_r = x_rn + STEM_OUTLINE_MARGIN
+    x_left = X0 - margin
+    x_right = X0 + (nc - 1) * PITCH + margin
+    x_head_l = x_left - head_ex
+    x_head_r = x_right + head_ex
+    x_stem_l = x_ln - stem_om
+    x_stem_r = x_rn + stem_om
     # Extend FR4 above row A so vertical silk fits between outline edge and pad holes.
     y_top = (
         Y_W_ROW_A
         - SILK_OFF_HEAD_MIL
         - SILK_VERTICAL_HALF_EXTENT_MIL
-        - MARGIN
+        - margin
     )
-    y_bot = stem_pin_y_mil(nc - 1, p) + MARGIN
+    y_bot = stem_pin_y_mil(nc - 1, p) + margin
     y_neck = y_stem_top - 50.0
     return [
         (x_head_l, y_top),
@@ -358,13 +377,21 @@ def board_outline_polyline_mil(
     *,
     corner_radius_mil: float = BOARD_CORNER_RADIUS_MIL,
     arc_segments: int = 8,
+    margin_mil: float | None = None,
+    head_outline_extra_mil: float | None = None,
+    stem_outline_margin_mil: float | None = None,
 ) -> list[Point2]:
     """Closed board outline as a dense polyline (mil) for tools that only support line segments.
 
     Corners are 90° circular fillets with radius ``corner_radius_mil``; each fillet is split into
     ``arc_segments`` chords (default 8 ≈ 11.25° per step).
     """
-    poly = board_outline_polygon_mil(p)
+    poly = board_outline_polygon_mil(
+        p,
+        margin_mil=margin_mil,
+        head_outline_extra_mil=head_outline_extra_mil,
+        stem_outline_margin_mil=stem_outline_margin_mil,
+    )
     r = _effective_corner_radius_mil(poly, corner_radius_mil)
     if r <= 0.0:
         return list(poly)
@@ -388,13 +415,23 @@ def board_outline_polyline_mil(
 
 
 def board_outline_svg_path_d(
-    p: BoardParams, *, corner_radius_mil: float = BOARD_CORNER_RADIUS_MIL
+    p: BoardParams,
+    *,
+    corner_radius_mil: float = BOARD_CORNER_RADIUS_MIL,
+    margin_mil: float | None = None,
+    head_outline_extra_mil: float | None = None,
+    stem_outline_margin_mil: float | None = None,
 ) -> str:
     """Closed board outline as SVG path ``d`` with circular arc fillets (mil space).
 
     Orthogonal T polygon only; interior is CCW; arcs use ``A`` with rx = ry = r.
     """
-    poly = board_outline_polygon_mil(p)
+    poly = board_outline_polygon_mil(
+        p,
+        margin_mil=margin_mil,
+        head_outline_extra_mil=head_outline_extra_mil,
+        stem_outline_margin_mil=stem_outline_margin_mil,
+    )
     r = _effective_corner_radius_mil(poly, corner_radius_mil)
     if r <= 0.0:
         parts = [f"M {poly[0][0]:.2f} {poly[0][1]:.2f}"]

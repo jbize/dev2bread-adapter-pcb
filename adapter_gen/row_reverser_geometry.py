@@ -7,9 +7,8 @@ See ``docs/top-row-reverser-routing.md``.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from adapter_gen.geometry import (
     HOLE_R,

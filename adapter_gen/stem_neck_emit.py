@@ -27,6 +27,7 @@ from adapter_gen.stem_neck_routing_mil import (
     wide_head_j3_row_column_vertical_trace_points_mil,
 )
 
+
 def _append_track_polyline_segments(
     shapes: list[str],
     nid: Callable[[], str],

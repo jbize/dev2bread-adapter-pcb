@@ -12,8 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from adapter_gen.geometry import (
-    BoardParams,
     HOLE_R,
+    BoardParams,
     head_column_x_mil,
     pad_clearance_radius_mil,
     wide_head_y_rows_mil,

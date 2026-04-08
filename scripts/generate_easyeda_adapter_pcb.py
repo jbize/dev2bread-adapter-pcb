@@ -67,15 +67,14 @@ try:
     from adapter_gen.branding import append_branding_easyeda_shapes
     from adapter_gen.geometry import (
         BOARD_CORNER_RADIUS_MIL,
-        BoardParams,
         HEAD_OUTLINE_EXTRA,
         HOLE_R,
         MARGIN,
         PAD_SIZE,
         SILK_OFF_HEAD_MIL,
-        SILK_VERTICAL_HALF_EXTENT_MIL,
         STEM_OUTLINE_MARGIN,
         Y_W_ROW_A,
+        BoardParams,
         board_outline_polyline_mil,
         head_column_x_mil,
         stem_layout_mil,
@@ -88,16 +87,16 @@ try:
         ROUTING_VIA_OUTER_DIAM_MIL,
         append_row_reverser_easyeda_shapes,
     )
-    from adapter_gen.stem_neck_emit import (
-        append_stem_neck_j3_bottom_routing_easyeda_tracks,
-        append_stem_neck_left_easyeda_tracks,
-        append_wide_head_stub_stem_join_easyeda_tracks,
-    )
     from adapter_gen.silk_preview import (
         HEAD_SILK_ROTATE_DEG,
         numeric_connector_header_centers_mil,
         paths_map_with_connector_ref_glyphs,
         rotate_silk_path_d,
+    )
+    from adapter_gen.stem_neck_emit import (
+        append_stem_neck_j3_bottom_routing_easyeda_tracks,
+        append_stem_neck_left_easyeda_tracks,
+        append_wide_head_stub_stem_join_easyeda_tracks,
     )
 except ImportError as e:
     print(
@@ -340,6 +339,9 @@ def build_standard_compressed(
         bp,
         corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
         arc_segments=8,
+        margin_mil=margin,
+        head_outline_extra_mil=head_ex,
+        stem_outline_margin_mil=stem_om,
     )
     ow = mil_to_u(OUTLINE_STROKE) or 0.5
     for i in range(len(poly_mil)):

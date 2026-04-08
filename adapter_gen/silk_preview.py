@@ -13,9 +13,9 @@ from typing import Any
 
 from adapter_gen.geometry import (
     PAD_SIZE,
-    SILK_OFF_HEAD_MIL,
     SILK_CONNECTOR_REF_MARGIN_PAST_PAD_MIL,
     SILK_CONNECTOR_REF_STEM_STRADDLE_PAST_PAD_MIL,
+    SILK_OFF_HEAD_MIL,
     Y_W_ROW_A,
     BoardParams,
     head_column_x_mil,

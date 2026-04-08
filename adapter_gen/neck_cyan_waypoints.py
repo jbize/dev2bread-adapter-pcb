@@ -21,7 +21,6 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 
 from adapter_gen.geometry import BoardParams, stem_layout_mil, stem_pin_y_mil
-from adapter_gen.row_reverser_geometry import polyline_points_attr
 from adapter_gen.preview_waypoint_style import (
     LABEL_DY_MIL,
     LABEL_FONT_SIZE_MIL,
@@ -32,6 +31,7 @@ from adapter_gen.preview_waypoint_style import (
     TOP_COPPER_PREVIEW_STROKE,
     TRACE_WIDTH_MIL,
 )
+from adapter_gen.row_reverser_geometry import polyline_points_attr
 from adapter_gen.stem_neck_routing_mil import (
     NECK_BEND_BELOW_PRIOR_PIN_MIL,
     neck_stem_top_straddle_waypoints_mil,

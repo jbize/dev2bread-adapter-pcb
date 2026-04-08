@@ -7,10 +7,9 @@ Used by ``scripts/bake_devkitc_gpio_silk_paths.py``. Board-specific J1/J3 label 
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 from matplotlib.font_manager import FontProperties
 from matplotlib.path import Path as MPath
