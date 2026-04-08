@@ -9,6 +9,7 @@ Use this file when continuing work on **dev2bread-adapter-pcb** in a new chat or
 - **Geometry:** Head rows parallel to **+X**; stem **rotated 90°** in-plane so the 22-pin direction runs **along the stem** (matches common commercial “Dev2Bread” style). Outline is a **T** (`STEM_OUTLINE_MARGIN`, `HEAD_OUTLINE_EXTRA`, etc. in `scripts/generate_easyeda_adapter_pcb.py`).
 - **Wide head depth:** **Four** 0.1″-spaced holes per column per side (breadboard-like), **same net**, short vertical links; route from **innermost** pad to stem. **Five** holes were intentionally omitted — the fifth would be essentially the straddle row; boards that narrow don’t need this adapter.
 - **Outputs:** **EasyEDA Standard** compressed JSON (`head.docType` 3, `shape[]` tilde strings). **Not** raw Gerber — import in **EasyEDA Pro** via **File → Import → Import EasyEDA Standard Edition**, then **export Gerber + drill** for fabs. Do **not** rely on **File Source → Apply** with expanded TRACK/PAD JSON in Pro (expects different format → “Invalid format”).
+- **Preview ↔ generator:** Prefer **shared `adapter_gen/` geometry and placement** so SVG preview and EasyEDA export stay aligned—see **`docs/preview-generator-parity.md`**.
 
 ## Terminology (docs + code)
 
