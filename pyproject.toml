@@ -24,19 +24,38 @@ include = ["adapter_gen*"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-src = ["adapter_gen", "scripts"]
+src = ["adapter_gen", "scripts", "tests"]
 
 [tool.ruff.lint]
 select = [
-    "E4",   # import
-    "E7",   # statement
-    "E9",   # runtime
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
     "F",    # pyflakes
     "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "SIM",  # flake8-simplify
+    "C4",   # comprehensions
+    "PIE",  # flake8-pie
+    "PERF", # perflint
+    "RUF",  # ruff-specific
 ]
 ignore = [
-    "E402", # module import not at top (scripts tweak sys.path)
+    "E402",  # import after sys.path (scripts)
+    "PERF401",  # list.append loops — extend is not always clearer for PCB emitters
+    "E501",  # line length (88 soft; avoid huge churn)
+    "RUF001", "RUF002", "RUF003",  # unicode × − ’ in docs/comments (intentional)
+    "SIM108",  # ternary vs if/else — prefer readability for geometry
+    "T201",    # print — CLI / user messaging
+    "PLR",     # pylint refactor (too many branches/args/statements)
+    "PLC0415", # lazy imports inside functions
+    "S101",    # assert — used for type narrowing / tests
+    "TRY",     # try/except style (large churn)
+    "EM",      # exception messages
+    "D",       # pydocstyle not enabled; docstrings per CONTRIBUTING
 ]
+[tool.ruff.lint.per-file-ignores]
+"scripts/**/*.py" = ["S603", "S606"]  # subprocess / os.exec — intentional CLIs
 
 [tool.ruff.lint.isort]
 known-first-party = ["adapter_gen"]

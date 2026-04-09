@@ -91,6 +91,8 @@ Use this as a checklist; turn items on by team agreement and CI.
 
 ## 5. PR / review checklist (short)
 
+The same items, with links for routing work, live in **[CONTRIBUTING.md](../CONTRIBUTING.md#pr-checklist)**.
+
 - [ ] No dead code or stray prints in library modules.
 - [ ] New public API has types + docstring (units if relevant).
 - [ ] Duplication questioned: should this share a helper?

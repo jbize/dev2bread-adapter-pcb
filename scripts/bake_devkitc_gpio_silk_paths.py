@@ -29,12 +29,12 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
+from adapter_gen._venv_bootstrap import ensure_matplotlib
 
 ensure_matplotlib()
 
-from adapter_gen.board_profile import boards_dir  # noqa: E402
-from adapter_gen.silk_bake import (  # noqa: E402
+from adapter_gen.board_profile import boards_dir
+from adapter_gen.silk_bake import (
     bake_gpio_from_board_toml,
     iter_board_tomls_with_silk_bake,
     write_numeric_silk_json,

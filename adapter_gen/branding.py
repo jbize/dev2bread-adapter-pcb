@@ -17,9 +17,10 @@ from __future__ import annotations
 import base64
 import io
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Literal, cast
+from typing import Literal, cast
 
 import numpy as np
 from matplotlib.font_manager import FontProperties, fontManager

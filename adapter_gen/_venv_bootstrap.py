@@ -7,6 +7,7 @@ follows PATH; if system Python has no matplotlib but ``.venv`` does, we switch t
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import sys
 from pathlib import Path
@@ -37,11 +38,7 @@ def _print_matplotlib_help() -> None:
 
 
 def ensure_matplotlib() -> None:
-    try:
-        import matplotlib  # noqa: F401
-    except ImportError:
-        pass
-    else:
+    if importlib.util.find_spec("matplotlib") is not None:
         return
 
     if os.environ.get(_REEXEC_ENV):
@@ -52,7 +49,7 @@ def ensure_matplotlib() -> None:
     if vpy is not None:
         env = {**os.environ, _REEXEC_ENV: "1"}
         script = Path(sys.argv[0]).resolve()
-        os.execve(str(vpy), [str(vpy), str(script)] + sys.argv[1:], env)
+        os.execve(str(vpy), [str(vpy), str(script), *sys.argv[1:]], env)
 
     _print_matplotlib_help()
     raise SystemExit(1)

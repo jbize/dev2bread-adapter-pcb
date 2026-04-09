@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import cmath
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal
 
 # 2D point in mil (+Y down), same as legacy scripts.
 Point2 = tuple[float, float]

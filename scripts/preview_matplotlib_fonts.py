@@ -23,12 +23,12 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from adapter_gen._venv_bootstrap import ensure_matplotlib  # noqa: E402
+from adapter_gen._venv_bootstrap import ensure_matplotlib
 
 ensure_matplotlib()
 
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.font_manager import fontManager  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import fontManager
 
 
 def _likely_text_family(name: str) -> bool:

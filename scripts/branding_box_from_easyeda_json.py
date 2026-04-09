@@ -162,7 +162,7 @@ def emit_branding_svg(
     boxes: list[tuple[float, float, float, float]] = []
     for x, y, w, h, _b64 in images:
         boxes.append((x * 10.0, y * 10.0, (x + w) * 10.0, (y + h) * 10.0))
-    for _cx, _cy, stroke, _lab, d in texts:
+    for _cx, _cy, _stroke, _lab, d in texts:
         bb = _path_bbox_file_units(d)
         if bb is not None:
             minx, miny, maxx, maxy = bb

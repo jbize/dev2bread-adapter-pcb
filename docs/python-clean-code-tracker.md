@@ -16,10 +16,11 @@ Companion to **[python-clean-code.md](python-clean-code.md)**. Use this as a **s
 **Local commands (repo root):**
 
 ```bash
-pip install -e ".[dev]"   # ruff + mypy
+pip install -e ".[dev]"   # ruff + mypy + pytest
 ruff check .
 ruff format --check .
 mypy
+pytest -q
 pre-commit run -a   # optional; requires: pip install pre-commit && pre-commit install
 ```
 
@@ -50,15 +51,11 @@ pre-commit run -a   # optional; requires: pip install pre-commit && pre-commit i
 
 ## Phase 5 — Docs & review habit
 
-- [ ] New **public** APIs: docstring + types per `python-clean-code.md`
-- [ ] PRs touching copper/preview: **routing invariants** checklist (`adapter-routing-invariants.md`, `.cursor/rules/…`)
+- [x] **Public APIs + PR habit** documented in **[CONTRIBUTING.md](../CONTRIBUTING.md)** (docstrings/types for new/changed public symbols; routing invariant links; same checklist as `python-clean-code.md` §5)
+- [x] **Copper / preview / PRs** — use **CONTRIBUTING.md** + **[adapter-routing-invariants.md](adapter-routing-invariants.md)** at review time (see also **`.cursor/rules/no-assumed-short-circuits.mdc`**)
 
 ---
 
-## Quick reference: PR checklist (from python-clean-code.md §5)
+## Quick reference: PR checklist
 
-- [ ] No dead code or stray prints in library modules  
-- [ ] New public API has types + docstring (units if relevant)  
-- [ ] Duplication questioned: should this share a helper?  
-- [ ] Geometry/copper changes: routing invariants still hold  
-- [ ] Tests or manual script run noted in PR if behavior-visible  
+**Use [CONTRIBUTING.md](../CONTRIBUTING.md#pr-checklist)** (mirrors **§5** in [python-clean-code.md](python-clean-code.md)).

@@ -39,7 +39,7 @@ _BASELINE_REL = Path("tests/baselines/out_manifest.sha256")
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from adapter_gen.board_profile import boards_dir, load_board_profile  # noqa: E402
+from adapter_gen.board_profile import boards_dir, load_board_profile
 
 
 def _silk_mode_and_labels(silk_profile: str | None) -> tuple[str, str]:

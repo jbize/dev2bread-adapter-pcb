@@ -48,6 +48,10 @@ Full detail: **[docs/dev2bread-adapter-pcb.md](docs/dev2bread-adapter-pcb.md)** 
 
 **`resources/images/`** holds reference photos (e.g. DevKit module, **breadboard misfitment**). Optional **silk artwork** for bitmap branding in EasyEDA can live there too.
 
+### Contributing
+
+Before a PR: **[CONTRIBUTING.md](CONTRIBUTING.md)** (PR checklist, routing invariant links, local **`ruff` / `mypy` / `pytest` / `verify_board_outputs`** commands).
+
 ### Lint (local + CI)
 
 Python **3.11+**. With a venv (e.g. **`.venv`** at the repo root):
