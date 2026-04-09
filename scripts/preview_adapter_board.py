@@ -30,7 +30,8 @@ Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb
       # preview: bottom-copper trace strokes only (no top-layer sketch obscuring)
 
 Silk modes and branding (devkitc1 vs numeric vs auto, ``--no-branding``): see repository
-**README.md** (section **SVG preview**).
+**README.md** (section **SVG preview**). Optional **``--routing-waypoints``** draws developer-only
+cyan waypoint overlays (off by default).
 
 Run from repo root (or set PYTHONPATH).
 """
@@ -194,15 +195,15 @@ def main() -> None:
         default=None,
         help="Omit top-row reverser overlay.",
     )
-    p.add_argument(
-        "--no-top-row-cyan-waypoints",
-        action="store_true",
-        help="Omit cyan waypoint markers + temp labels on outer row A (preview only).",
+    dev = p.add_argument_group(
+        "Developer / routing debug",
+        "Cyan waypoint dots and temporary index labels for tuning geometry. "
+        "Off by default so SVGs stay suitable for documentation and sharing.",
     )
-    p.add_argument(
-        "--no-neck-cyan-waypoints",
+    dev.add_argument(
+        "--routing-waypoints",
         action="store_true",
-        help="Omit cyan neck (stem straddle) waypoint markers (preview only).",
+        help="Draw waypoint overlays (top row A, neck J1, stem straddle markers).",
     )
     tb = p.add_mutually_exclusive_group()
     tb.add_argument(
@@ -214,9 +215,7 @@ def main() -> None:
     tb.add_argument(
         "--bottom-only",
         action="store_true",
-        help="Preview only: Bottom copper — blue strokes (EasyEDA BottomLayer); hide Top (red). "
-        "Discrete blue J3 straddle markers (same spots as neck J1, mirrored) unless "
-        "--no-neck-cyan-waypoints.",
+        help="Preview only: Bottom copper — blue strokes (EasyEDA BottomLayer); hide Top (red).",
     )
     args = p.parse_args()
     profile = None
@@ -300,8 +299,7 @@ def main() -> None:
         branding=branding,
         row_reverser=row_reverser,
         silk_gpio_paths_json=silk_gpio_paths_json,
-        top_row_cyan_waypoints=not args.no_top_row_cyan_waypoints,
-        neck_cyan_waypoints=not args.no_neck_cyan_waypoints,
+        routing_waypoint_overlays=args.routing_waypoints,
         preview_traces=preview_traces,
     )
     print(out.resolve())

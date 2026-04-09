@@ -29,6 +29,6 @@ MARKER_STROKE_MIL = 0.75
 # Min center-to-center spacing when packing markers along a segment (mil).
 MIN_TRACE_CENTER_PITCH_MIL = TRACE_WIDTH_MIL + TRACE_GAP_MIL
 
-# Temp labels — small; remove once routing is final.
+# Temp index labels on waypoint overlays (preview-only; ``--routing-waypoints``).
 LABEL_FONT_SIZE_MIL = 7.0
 LABEL_DY_MIL = 9.0

@@ -51,7 +51,7 @@ Default output filenames avoid overwriting variants: `out/easyeda/easyeda-adapte
 
 ## Pitfalls to avoid
 
-- Import **Standard compressed** JSON in Pro — not the legacy expanded blob for “File Source Apply.”
+- Import **Standard compressed** JSON in Pro — **File → File Source → Apply** expects a different Pro format (“Invalid format” if you try ad‑hoc JSON).
 - After import: **DRC**, add anything missing (extra silk, fab notes, logos) in the editor, then **Gerber** for the house.
 - **DevKitC v1.0 vs v1.1 LED:** GPIO silk follows **v1.1** (RGB LED on **GPIO38**); v1.0 used **GPIO48** for the LED — silk is still about **header** names, not LED wiring.
 
@@ -66,12 +66,12 @@ Use this when you have not touched the repo for a while or a new session needs f
 3. **`docs/dev2bread-adapter-pcb.md`** — geometry constants, CLI details, file outputs.
 4. **`docs/design-prompt-breadboard-adapter.md`** — longer-term product / IR / staged-copper design intent (if you are extending the parametric pipeline).
 
-### Python: new pipeline vs legacy EasyEDA generator
+### Python: library vs CLI scripts
 
 | Role | Files |
 |------|--------|
-| **In play** (parametric geometry + SVG preview) | `adapter_gen/geometry.py`, `adapter_gen/board_profile.py`, `adapter_gen/svg_preview.py`, `adapter_gen/__init__.py`, `scripts/preview_adapter_board.py` |
-| **Legacy bridge** (full EasyEDA JSON: copper, routing, silk) | `scripts/generate_easyeda_adapter_pcb.py` — still duplicates most layout constants; only **imports** `adapter_gen` for the **rounded board outline polyline**. Replace when a proper emitter lives under `adapter_gen`. |
+| **Shared geometry + preview** | `adapter_gen/geometry.py`, `adapter_gen/board_profile.py`, `adapter_gen/svg_preview.py`, `scripts/preview_adapter_board.py` — mil model and SVG (review / discussion). |
+| **EasyEDA Standard JSON export** | `scripts/generate_easyeda_adapter_pcb.py` — CLI orchestrator; builds **`shape[]`** strings. It **imports** `adapter_gen` for outline, pads, row-reverser / stem-neck **`TRACK~`**, silk **`TEXT~`**, branding, DRC, etc. (same routing modules as preview). It remains a **large script** rather than a small `adapter_gen` façade; further consolidation is optional. |
 | **Silk path baking** (optional pre-step) | `scripts/bake_devkitc_gpio_silk_paths.py` — writes **`out/intermediate/silk/`** (numeric + **`[silk_bake]`** boards); needs **matplotlib**. Core helpers in **`adapter_gen/silk_bake.py`**. |
 
 ### Board TOML vs silk labels vs copper nets (keep these separate)
@@ -86,7 +86,7 @@ Use this when you have not touched the repo for a while or a new session needs f
 | Path | Contents |
 |------|----------|
 | **`out/preview/`** | SVG board previews (`adapter_gen` pipeline). |
-| **`out/easyeda/`** | **Importable** EasyEDA Standard PCB JSON (and optional legacy expanded `.pcb.json`). |
+| **`out/easyeda/`** | **Importable** EasyEDA Standard PCB JSON (`*.standard.json`). |
 | **`out/intermediate/silk/`** | Baked silk vector paths only — **cache** for the generator, not a board file. |
 
 ### Regeneration (typical)

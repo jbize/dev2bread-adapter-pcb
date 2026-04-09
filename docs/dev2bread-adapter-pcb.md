@@ -117,7 +117,6 @@ Use **`-o PATH`** to override the output file. **`--all-variants`** writes both 
 - **Per-pin silk text:** **88** Top Silk `TEXT` objects for `numeric` (two rows × 22 on the head + two columns × 22 on the stem). **`devkitc1` adds two more** **above the stem** (below the J3 GPIO row, not over those labels): **ESP32-S3-DevKitC-1** and **v1.1 · J1/J3** — **90** `TEXT` total. For **DevKitC-1**, orient the board so **J1 faces side A** and **J3 faces side B**; silk follows the Espressif **J1/J3** pin order (v1.1 RGB LED note: **GPIO38**).
 - Vector paths: **`numeric_silk_paths.json`** plus one GPIO file per board profile with **`[silk_bake]`** (e.g. **`devkitc1_gpio_silk_paths.json`** for the DevKitC profile — from **`scripts/bake_devkitc_gpio_silk_paths.py`**; not committed).
 - **Stronger board / more FR4:** `--margin-mil`, `--stem-outline-margin-mil`, `--head-outline-extra-mil`.
-- Optional legacy expanded JSON: `--legacy-expanded`
 
 ### Why numbering was “hard” (and what we did)
 

@@ -92,6 +92,7 @@ Run from the repo root. Silk JSON must exist under **`out/intermediate/silk/`** 
 | **DevKitC-style GPIO silk** + branding (profile default) | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk auto` or `--silk devkitc1` |
 | **Numeric 1…N** silk + branding (generic indices, not vendor GPIO names) | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk numeric` |
 | **Silk profile from TOML only** | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk auto` — uses **`silk_profile`** in **`resources/boards/<name>.toml`** (`devkitc1` → devkitc GPIO paths; **`generic`** / **`numeric`** in TOML map to the numeric silk JSON). To force numeric labels while keeping a **`devkitc1`** profile in the file, pass **`--silk numeric`** explicitly. |
+| **Waypoint dots + temp index labels** on top of traces (tuning only; off by default) | add **`--routing-waypoints`** — copper routing sketches are always drawn unless **`--top-only`** / **`--bottom-only`** |
 
 Default output path: **`out/preview/<board>.svg`** (override with **`-o`**). Use **`--no-branding`** to omit **`[branding]`** even when it is defined in the profile.
 

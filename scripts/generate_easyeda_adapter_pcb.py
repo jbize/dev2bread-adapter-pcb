@@ -28,12 +28,9 @@ Mechanical model (matches typical “Dev2Bread” / Foreman-style boards, see
     `scripts/bake_devkitc_gpio_silk_paths.py` (reads `[silk_bake]` from
     `resources/boards/*.toml`; writes under `out/intermediate/silk/`; not committed).
 
-Two formats exist:
-  * **Standard compressed** (this script’s default output): `head.docType` 3, `shape[]` of
-    `~`-delimited strings. This is what EasyEDA Standard saves and what **EasyEDA Pro**
-    imports via **File → Import → Import EasyEDA Standard Edition**.
-  * **Expanded JSON** (TRACK/PAD objects): only useful for old Standard **applySource** API;
-    EasyEDA Pro **File → File Source → Apply** expects Pro `.epcb` JSON Lines → "Invalid format".
+Output is **Standard compressed** JSON: `head.docType` 3, `shape[]` of `~`-delimited strings —
+what EasyEDA Standard saves and what **EasyEDA Pro** imports via **File → Import → Import EasyEDA
+Standard Edition**.
 
 See: https://docs.easyeda.com/en/DocumentFormat/3-EasyEDA-PCB-File-Format/
 Storage units: file coordinates / stroke widths use **0.1 mil** steps (value 1 = 10 mil) per EasyEDA docs.
@@ -109,15 +106,7 @@ except ImportError as e:
     )
     raise SystemExit(1) from e
 
-# Legacy expanded JSON only (copper routing). Geometry + pads use adapter_gen.geometry.
-TRACK_WIDTH = 24
 OUTLINE_STROKE = 5
-ROUTE_JOG_MIL = 40
-
-# Full 44-pin / 4-deep layout for ``build_legacy_expanded`` until that path is removed.
-_LEGACY_BP = BoardParams(
-    n_pins=44, n_rows_top=4, n_rows_bottom=4, omit_row_b_gap_adjacent=False
-)
 
 
 def mil_to_u(m: float) -> float:
@@ -562,371 +551,6 @@ def build_standard_compressed(
     }
 
 
-def build_legacy_expanded() -> dict:
-    """Legacy expanded object graph with full copper routing (Standard applySource).
-
-    Not for EasyEDA Pro File Source. **Scheduled for removal** once the new router exists;
-    default Standard JSON uses ``build_standard_compressed`` (row-reverser Top/Bottom TRACKs;
-    stem neck left Top + J3 bottom routing; no full J1 head-to-stem beyond stubs).
-    """
-
-    gid = 0
-
-    def next_id() -> str:
-        nonlocal gid
-        gid += 1
-        return f"gge{gid}"
-
-    tracks: dict = {}
-    pads: dict = {}
-
-    signals: dict[str, list] = {f"NET{n}": [] for n in range(1, 45)}
-    signals[""] = []
-
-    poly_mil = board_outline_polyline_mil(
-        _LEGACY_BP,
-        corner_radius_mil=BOARD_CORNER_RADIUS_MIL,
-        arc_segments=8,
-    )
-    xs = [pt[0] for pt in poly_mil]
-    ys = [pt[1] for pt in poly_mil]
-    x_min, x_max = min(xs), max(xs)
-    y_min, y_max = min(ys), max(ys)
-    w = x_max - x_min
-    h = y_max - y_min
-
-    for i in range(len(poly_mil)):
-        xa, ya = poly_mil[i]
-        xb, yb = poly_mil[(i + 1) % len(poly_mil)]
-        oid = next_id()
-        tracks[oid] = {
-            "gId": oid,
-            "layerid": "10",
-            "net": "",
-            "pointArr": [{"x": xa, "y": ya}, {"x": xb, "y": yb}],
-            "strokeWidth": OUTLINE_STROKE,
-        }
-        signals[""].append({"gId": oid, "cmd": "TRACK", "layerid": 10, "fid": 0})
-
-    def add_signal(net: str, obj: dict, cmd: str) -> None:
-        signals[net].append(
-            {
-                "gId": obj["gId"],
-                "cmd": cmd,
-                "layerid": obj.get("layerid", "11"),
-                "fid": 0,
-            }
-        )
-
-    item_order: list[str] = list(tracks.keys())
-
-    leg = _LEGACY_BP
-    _, x_ln, x_rn, _ = stem_layout_mil(leg)
-    nc = leg.num_cols
-    nra = leg.n_rows_top
-    nrb = leg.n_rows_bottom
-
-    for i in range(nc):
-        net = f"NET{i + 1}"
-        x = head_column_x_mil(i, leg)
-        xj = x - ROUTE_JOG_MIL
-        ys_stem = stem_pin_y_mil(i, leg)
-        ys_head = wide_head_y_rows_mil(p=leg, from_row_a=True)
-        y_inner = ys_head[-1]
-        for yk in ys_head:
-            pid = next_id()
-            pads[pid] = pad_dict(pid, x, yk, str(i + 1), net)
-            add_signal(net, pads[pid], "PAD")
-            item_order.append(pid)
-        for k in range(nra - 1):
-            lk = next_id()
-            tracks[lk] = {
-                "gId": lk,
-                "layerid": "1",
-                "net": net,
-                "pointArr": [
-                    {"x": x, "y": ys_head[k]},
-                    {"x": x, "y": ys_head[k + 1]},
-                ],
-                "strokeWidth": TRACK_WIDTH,
-            }
-            add_signal(net, tracks[lk], "TRACK")
-            item_order.append(lk)
-        pw = next_id()
-        pads[pw] = pad_dict(pw, x_ln, ys_stem, str(i + 1), net)
-        tr = next_id()
-        tracks[tr] = {
-            "gId": tr,
-            "layerid": "1",
-            "net": net,
-            "pointArr": [
-                {"x": x, "y": y_inner},
-                {"x": xj, "y": y_inner},
-                {"x": xj, "y": ys_stem},
-                {"x": x_ln, "y": ys_stem},
-            ],
-            "strokeWidth": TRACK_WIDTH,
-        }
-        add_signal(net, pads[pw], "PAD")
-        add_signal(net, tracks[tr], "TRACK")
-        item_order.extend([pw, tr])
-
-    for i in range(nc):
-        net = f"NET{i + nc + 1}"
-        x = head_column_x_mil(i, leg)
-        xj = x + ROUTE_JOG_MIL
-        ys_stem = stem_pin_y_mil(i, leg)
-        ys_head = wide_head_y_rows_mil(p=leg, from_row_a=False)
-        y_inner = ys_head[-1]
-        for yk in ys_head:
-            pid = next_id()
-            pads[pid] = pad_dict(pid, x, yk, str(i + nc + 1), net)
-            add_signal(net, pads[pid], "PAD")
-            item_order.append(pid)
-        for k in range(nrb - 1):
-            lk = next_id()
-            tracks[lk] = {
-                "gId": lk,
-                "layerid": "1",
-                "net": net,
-                "pointArr": [
-                    {"x": x, "y": ys_head[k]},
-                    {"x": x, "y": ys_head[k + 1]},
-                ],
-                "strokeWidth": TRACK_WIDTH,
-            }
-            add_signal(net, tracks[lk], "TRACK")
-            item_order.append(lk)
-        pw = next_id()
-        pads[pw] = pad_dict(pw, x_rn, ys_stem, str(i + nc + 1), net)
-        tr = next_id()
-        tracks[tr] = {
-            "gId": tr,
-            "layerid": "1",
-            "net": net,
-            "pointArr": [
-                {"x": x, "y": y_inner},
-                {"x": xj, "y": y_inner},
-                {"x": xj, "y": ys_stem},
-                {"x": x_rn, "y": ys_stem},
-            ],
-            "strokeWidth": TRACK_WIDTH,
-        }
-        add_signal(net, pads[pw], "PAD")
-        add_signal(net, tracks[tr], "TRACK")
-        item_order.extend([pw, tr])
-
-    return {
-        "TRACK": tracks,
-        "PAD": pads,
-        "VIA": {},
-        "TEXT": {},
-        "DIMENSION": {},
-        "FOOTPRINT": {},
-        "ARC": {},
-        "RECT": {},
-        "CIRCLE": {},
-        "IMAGE": {},
-        "COPPERAREA": {},
-        "SOLIDREGION": {},
-        "DRCRULE": {
-            "trackWidth": 6,
-            "track2Track": 6,
-            "pad2Pad": 8,
-            "track2Pad": 8,
-            "hole2Hole": 10,
-            "holeSize": HOLE_R * 2,
-            "isRealtime": False,
-        },
-        "FABRICATION": {},
-        "SIGNALS": signals,
-        "head": {"c_para": None},
-        "systemColor": {
-            "background": "#000000",
-            "grid": "#FFFFFF",
-            "highLight": "#FFFFFF",
-            "hole": "#000000",
-            "DRCError": "#FFFFFF",
-        },
-        "preference": {"hideNets": [], "hideFootprints": [], "unit": "mil"},
-        "layers": _layers_expanded(),
-        "BBox": {
-            "x": int(x_min),
-            "y": int(y_min),
-            "width": int(w),
-            "height": int(h),
-        },
-        "canvas": {
-            "viewWidth": "2400",
-            "viewHeight": "2400",
-            "backGround": "#000000",
-            "gridVisible": "yes",
-            "gridColor": "#FFFFFF",
-            "gridSize": "10",
-            "canvasWidth": 2400,
-            "canvasHeight": 2400,
-            "gridStyle": "line",
-            "snapSize": "1",
-            "unit": "mil",
-            "routingWidth": "10",
-            "routingAngle": "45",
-            "copperAreaDisplay": "invisible",
-            "altSnapSize": "0.5",
-        },
-        "itemOrder": item_order,
-    }
-
-
-def pad_dict(gid: str, x: float, y: float, number: str, net: str) -> dict:
-    return {
-        "gId": gid,
-        "layerid": "11",
-        "shape": "ELLIPSE",
-        "x": x,
-        "y": y,
-        "net": net,
-        "width": PAD_SIZE,
-        "height": PAD_SIZE,
-        "number": number,
-        "holeR": HOLE_R,
-        "pointArr": [],
-        "rotation": "0",
-    }
-
-
-def _layers_expanded() -> dict:
-    return {
-        "1": {
-            "name": "TopLayer",
-            "color": "#FF0000",
-            "darkColor": "#CC0000",
-            "visible": True,
-            "active": True,
-            "config": True,
-        },
-        "2": {
-            "name": "BottomLayer",
-            "color": "#0000FF",
-            "darkColor": "#000080",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "3": {
-            "name": "TopSilkLayer",
-            "color": "#FFFF00",
-            "darkColor": "#B9B900",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "4": {
-            "name": "BottomSilkLayer",
-            "color": "#808000",
-            "darkColor": "#535300",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "5": {
-            "name": "TopPasterLayer",
-            "color": "#808080",
-            "darkColor": "#666666",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "6": {
-            "name": "BottomPasterLayer",
-            "color": "#800000",
-            "darkColor": "#660000",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "7": {
-            "name": "TopSolderLayer",
-            "color": "#800080",
-            "darkColor": "#660066",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "8": {
-            "name": "BottomSolderLayer",
-            "color": "#AA00FF",
-            "darkColor": "#8800CC",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "9": {
-            "name": "Ratlines",
-            "color": "#6464FF",
-            "darkColor": "#5050CC",
-            "visible": False,
-            "active": False,
-            "config": True,
-        },
-        "10": {
-            "name": "BoardOutline",
-            "color": "#FF00FF",
-            "darkColor": "#CC00CC",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "11": {
-            "name": "Multi-Layer",
-            "color": "#C0C0C0",
-            "darkColor": "#999999",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "12": {
-            "name": "Document",
-            "color": "#FFFFFF",
-            "darkColor": "#CCCCCC",
-            "visible": True,
-            "active": False,
-            "config": True,
-        },
-        "21": {
-            "name": "Inner1",
-            "color": "#800000",
-            "darkColor": "#660000",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "22": {
-            "name": "Inner2",
-            "color": "#008000",
-            "darkColor": "#006600",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "23": {
-            "name": "Inner3",
-            "color": "#00FF00",
-            "darkColor": "#00CC00",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-        "24": {
-            "name": "Inner4",
-            "color": "#000080",
-            "darkColor": "#000066",
-            "visible": False,
-            "active": False,
-            "config": False,
-        },
-    }
-
-
 def _default_standard_path(
     repo: Path, silk_labels: str, *, board_stem: str | None
 ) -> Path:
@@ -939,15 +563,6 @@ def _default_standard_path(
     if silk_labels == "none":
         return base / "easyeda-adapter-44pin-dev2bread.standard.json"
     return base / f"easyeda-adapter-44pin-dev2bread.{silk_labels}.standard.json"
-
-
-def _legacy_expanded_pcb_path(repo: Path, board_stem: str | None) -> Path:
-    name = (
-        f"{board_stem}.pcb.json"
-        if board_stem
-        else "easyeda-adapter-44pin-dev2bread.pcb.json"
-    )
-    return _easyeda_dir() / name
 
 
 def _write_standard(
@@ -985,12 +600,6 @@ def main() -> None:
     repo = _repo_root()
     p = argparse.ArgumentParser(
         description="Generate EasyEDA Standard PCB JSON for the 44-pin dev-to-breadboard adapter.",
-    )
-    p.add_argument(
-        "--legacy-expanded",
-        action="store_true",
-        help="Also write legacy expanded JSON with full copper routing "
-        "(out/easyeda/<board>.pcb.json; not for Pro; to be removed).",
     )
     p.add_argument(
         "--no-branding",
@@ -1195,13 +804,6 @@ def main() -> None:
             row_reverser=row_reverser,
             stem_neck_routing=stem_neck_routing,
         )
-
-    if args.legacy_expanded:
-        leg_path = _legacy_expanded_pcb_path(repo, board_stem)
-        leg_path.parent.mkdir(parents=True, exist_ok=True)
-        with leg_path.open("w", encoding="utf-8") as f:
-            json.dump(build_legacy_expanded(), f, indent=1)
-        print(leg_path)
 
 
 if __name__ == "__main__":

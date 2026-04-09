@@ -46,6 +46,7 @@ Use this when you change **Python**, **geometry**, **copper/preview**, or **Easy
 |--------|-----|
 | Style, DRY, typing | [docs/python-clean-code.md](docs/python-clean-code.md) |
 | Preview vs generator parity | [docs/preview-generator-parity.md](docs/preview-generator-parity.md) |
+| Module map (geometry → SVG vs EasyEDA) | [docs/architecture-emitters.md](docs/architecture-emitters.md) |
 | Routing / electrical intent | [docs/adapter-routing-invariants.md](docs/adapter-routing-invariants.md) |
 | Rollout tracker (what we already did) | [docs/python-clean-code-tracker.md](docs/python-clean-code-tracker.md) |
 

@@ -132,8 +132,14 @@ def append_neck_j3_stem_right_red_waypoints_svg(
     svg: ET.Element,
     p: BoardParams,
     _sub: Callable[..., ET.Element],
+    *,
+    waypoint_markers: bool = False,
 ) -> None:
-    """Emit ``bottom-stem-j3-neck-ref`` — bent straddle → right pin (same as left neck)."""
+    """Emit ``bottom-stem-j3-neck-ref`` — bent straddle → right pin (same as left neck).
+
+    Polylines are always drawn (parity with EasyEDA BottomLayer). Optional straddle dots +
+    temp labels only when ``waypoint_markers`` is True (developer tuning).
+    """
     wpts = neck_stem_top_straddle_waypoints_right_mil(p)
     if not wpts:
         return
@@ -177,6 +183,8 @@ def append_neck_j3_stem_right_red_waypoints_svg(
                 "data-right-stem-net": str(seq),
             },
         )
+    if not waypoint_markers:
+        return
     r = f"{MARKER_RADIUS_MIL:.2f}"
     sw = f"{MARKER_STROKE_MIL:.2f}"
     lbl_fs = f"{LABEL_FONT_SIZE_MIL:.1f}"

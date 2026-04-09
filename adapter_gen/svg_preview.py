@@ -4,9 +4,12 @@ The row-reverser sketch is not tied to a specific pin count: it uses ``p.num_col
 innermost row-A pad line (bottom of the top socket stack) for whatever ``BoardParams`` you pass.
 
 Preview **trace** colors match EasyEDA: **TopLayer = red**, **BottomLayer = blue**.
-``preview_traces`` selects Top vs Bottom in the row-reverser group. Top-row waypoints and neck J1
-sketches are Top-only (red). Wide-head **J3** column stacks and **J3 → straddle** joins are
-Bottom-only or both (blue).
+``preview_traces`` selects Top vs Bottom in the row-reverser group.
+
+**Routing sketches** (row reverser, stub→stem, row-A columns, neck straddle→pins, wide-head J3,
+J3→straddle) follow the generator geometry and draw by default. **Cyan waypoint dots and temporary
+index labels** are developer-only; pass ``routing_waypoint_overlays=True`` (CLI:
+``--routing-waypoints``) to add them — default off so previews stay clean for sharing.
 """
 
 from __future__ import annotations
@@ -64,8 +67,7 @@ def emit_board_svg(
     branding: BoardBranding | None = None,
     row_reverser: bool = False,
     silk_gpio_paths_json: str | None = None,
-    top_row_cyan_waypoints: bool = True,
-    neck_cyan_waypoints: bool = True,
+    routing_waypoint_overlays: bool = False,
     preview_traces: Literal["both", "top", "bottom"] = "both",
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,22 +89,19 @@ def emit_board_svg(
         title_bits.append(f"silk={silk_mode}")
     if branding is not None:
         title_bits.append("branding")
-    show_top_cyan = top_row_cyan_waypoints and preview_traces != "bottom"
-    show_neck_cyan = neck_cyan_waypoints and preview_traces != "bottom"
-    show_j3_head_row_columns = top_row_cyan_waypoints and preview_traces != "top"
     if row_reverser:
         title_bits.append("row-A inner reverser sketch")
-    if show_top_cyan:
-        title_bits.append("red top-row waypoints (TopLayer)")
-    if show_neck_cyan:
-        title_bits.append("red neck J1 waypoints (TopLayer)")
+    show_bottom_routing = preview_traces != "top"
+    show_top_layer_routing = preview_traces != "bottom"
+    if routing_waypoint_overlays and show_top_layer_routing:
+        title_bits.append("TopLayer waypoint dots (row A + neck straddle)")
     if preview_traces == "top":
         title_bits.append("preview traces top only")
     elif preview_traces == "bottom":
         title_bits.append("preview traces bottom only")
-    if show_j3_head_row_columns and neck_cyan_waypoints:
-        title_bits.append("blue stem straddle→pin (BottomLayer)")
-    if show_j3_head_row_columns:
+    if routing_waypoint_overlays and show_bottom_routing:
+        title_bits.append("J3 straddle waypoint dots (BottomLayer)")
+    if show_bottom_routing:
         title_bits.append("blue J3 head row column traces (BottomLayer)")
         title_bits.append("blue J3 head to stem straddle joins (BottomLayer)")
     title_bits.append("(mil, +Y down)")
@@ -259,18 +258,30 @@ def emit_board_svg(
             preview_traces=preview_traces,
         )
 
-    # Right-stem BottomLayer preview (blue): straddle → pins — same as EasyEDA bottom routing.
-    if show_j3_head_row_columns and neck_cyan_waypoints:
-        append_neck_j3_stem_right_red_waypoints_svg(svg, p, _sub)
-
-    # After silk/branding so temp labels and TopLayer markers are not covered by stroke overlays.
-    if show_top_cyan:
-        append_top_row_cyan_waypoints_svg(svg, p, _sub)
-    if show_j3_head_row_columns:
+    # Stem / neck routing sketches (same geometry as EasyEDA); waypoint dots optional (see title).
+    if show_top_layer_routing:
+        append_top_row_cyan_waypoints_svg(
+            svg,
+            p,
+            _sub,
+            waypoint_markers=routing_waypoint_overlays,
+        )
+    if show_bottom_routing:
+        append_neck_j3_stem_right_red_waypoints_svg(
+            svg,
+            p,
+            _sub,
+            waypoint_markers=routing_waypoint_overlays,
+        )
         append_wide_head_j3_row_column_traces_svg(svg, p, _sub)
         append_j3_head_to_right_stem_waypoint_join_svg(svg, p, _sub)
-    if show_neck_cyan:
-        append_neck_cyan_waypoints_svg(svg, p, _sub)
+    if show_top_layer_routing:
+        append_neck_cyan_waypoints_svg(
+            svg,
+            p,
+            _sub,
+            waypoint_markers=routing_waypoint_overlays,
+        )
 
     # J1/J3 connector refs (numeric or devkitc GPIO silk) on top of routing sketches.
     if numeric_cref_ds:

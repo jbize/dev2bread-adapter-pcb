@@ -45,8 +45,10 @@ def append_neck_cyan_waypoints_svg(
     svg: ET.Element,
     p: BoardParams,
     _sub: Callable[..., ET.Element],
+    *,
+    waypoint_markers: bool = False,
 ) -> None:
-    """Append ``cyan-neck-waypoints``: traces to left stem pins, then markers (preview)."""
+    """Append ``cyan-neck-waypoints``: traces to left stem pins; optional straddle markers."""
     wpts = neck_stem_top_straddle_waypoints_mil(p)
     if not wpts:
         return
@@ -91,6 +93,8 @@ def append_neck_cyan_waypoints_svg(
                 "data-left-stem-net": str(seq),
             },
         )
+    if not waypoint_markers:
+        return
     r = f"{MARKER_RADIUS_MIL:.2f}"
     sw = f"{MARKER_STROKE_MIL:.2f}"
     lbl_fs = f"{LABEL_FONT_SIZE_MIL:.1f}"

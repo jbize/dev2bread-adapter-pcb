@@ -60,8 +60,10 @@ def append_top_row_cyan_waypoints_svg(
     svg: ET.Element,
     p: BoardParams,
     _sub: Callable[..., ET.Element],
+    *,
+    waypoint_markers: bool = False,
 ) -> None:
-    """Append ``<g id="cyan-top-row-waypoints">`` — per-pad markers + temp 1…N labels (preview only)."""
+    """Append ``<g id="cyan-top-row-waypoints">`` — row-A column traces; optional per-pad markers."""
     _, wpts = top_row_a_waypoints_left_to_right_mil(p)
     if not wpts:
         return
@@ -101,6 +103,8 @@ def append_top_row_cyan_waypoints_svg(
                     "data-net-row-a": str(net_a),
                 },
             )
+    if not waypoint_markers:
+        return
     r = f"{MARKER_RADIUS_MIL:.2f}"
     sw = f"{MARKER_STROKE_MIL:.2f}"
     lbl_fs = f"{LABEL_FONT_SIZE_MIL:.1f}"
