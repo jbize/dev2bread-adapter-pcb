@@ -10,6 +10,12 @@ Preview **trace** colors match EasyEDA: **TopLayer = red**, **BottomLayer = blue
 J3→straddle) follow the generator geometry and draw by default. **Cyan waypoint dots and temporary
 index labels** are developer-only; pass ``routing_waypoint_overlays=True`` (CLI:
 ``--routing-waypoints``) to add them — default off so previews stay clean for sharing.
+
+**Board tint** — ``board_color`` / ``--board-color`` selects neutral gray (default) vs green
+soldermask-style fill for branding/silk color checks (preview only).
+
+**Silk stroke** — ``pin_label_color`` from ``[silk]`` (or default gray) sets vector GPIO /
+numeric / kit-ID / J1·J3 ref stroke — same hex is emitted in EasyEDA ``TEXT`` by the generator.
 """
 
 from __future__ import annotations
@@ -33,6 +39,11 @@ from adapter_gen.neck_j3_bottom_preview import (
     append_j3_head_to_right_stem_waypoint_join_svg,
     append_neck_j3_stem_right_red_waypoints_svg,
     append_wide_head_j3_row_column_traces_svg,
+)
+from adapter_gen.preview_board_style import (
+    BoardColorMode,
+    preview_board_palette,
+    silk_pin_label_stroke_svg,
 )
 from adapter_gen.row_reverser_emit import append_row_reverser_svg
 from adapter_gen.silk_preview import (
@@ -69,8 +80,12 @@ def emit_board_svg(
     silk_gpio_paths_json: str | None = None,
     routing_waypoint_overlays: bool = False,
     preview_traces: Literal["both", "top", "bottom"] = "both",
+    board_color: BoardColorMode = "default",
+    silk_pin_label_color: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    palette = preview_board_palette(board_color)
+    silk_stroke = silk_pin_label_stroke_svg(silk_pin_label_color)
     min_x, min_y, max_x, max_y = bounds_mil(p)
     w = max_x - min_x
     h = max_y - min_y
@@ -85,6 +100,8 @@ def emit_board_svg(
         },
     )
     title_bits = [f"Adapter {p.n_pins}-pin outline + holes"]
+    if board_color != "default":
+        title_bits.append(f"board_color={board_color}")
     if silk_mode and silk_mode != "none":
         title_bits.append(f"silk={silk_mode}")
     if branding is not None:
@@ -108,7 +125,6 @@ def emit_board_svg(
     t_el = ET.SubElement(svg, "title")
     t_el.text = " ".join(title_bits)
 
-    # Light background so outline contrast is obvious in any viewer
     _sub(
         svg,
         "rect",
@@ -117,7 +133,7 @@ def emit_board_svg(
             "y": f"{min_y:.1f}",
             "width": f"{w:.1f}",
             "height": f"{h:.1f}",
-            "fill": "#f4f4f2",
+            "fill": palette.canvas_fill,
         },
     )
 
@@ -127,8 +143,8 @@ def emit_board_svg(
         "g",
         {
             "id": "outline",
-            "fill": "#e4e2dc",
-            "stroke": "#1a472a",
+            "fill": palette.board_fill,
+            "stroke": palette.board_stroke,
             "stroke-width": "12",
             "stroke-linejoin": "round",
             "stroke-linecap": "round",
@@ -137,7 +153,7 @@ def emit_board_svg(
     g_holes = _sub(
         svg,
         "g",
-        {"id": "holes", "fill": "#1a3a5c", "stroke": "none"},
+        {"id": "holes", "fill": palette.hole_fill, "stroke": "none"},
     )
 
     d = board_outline_svg_path_d(p)
@@ -202,7 +218,7 @@ def emit_board_svg(
                 {
                     "id": "silk",
                     "fill": "none",
-                    "stroke": "#2a2a28",
+                    "stroke": silk_stroke,
                     "stroke-width": "6",
                     "stroke-linejoin": "round",
                     "stroke-linecap": "round",
@@ -291,7 +307,7 @@ def emit_board_svg(
             {
                 "id": "silk-connector-refs",
                 "fill": "none",
-                "stroke": "#2a2a28",
+                "stroke": silk_stroke,
                 "stroke-width": "6",
                 "stroke-linejoin": "round",
                 "stroke-linecap": "round",

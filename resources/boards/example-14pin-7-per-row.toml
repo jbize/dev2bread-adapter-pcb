@@ -20,3 +20,12 @@ silk_profile = "generic"
 n_rows_top = 4
 n_rows_bottom = 4
 omit_row_b_gap_adjacent = true
+
+# Non-ESP32 example board: copy uncommented [preview] / [silk] from an esp32-*.toml when tuning.
+# Optional SVG preview canvas only (scripts/preview_adapter_board.py).
+# [preview]
+# board_color = "default"  # or "green" for soldermask-style preview
+#
+# Vector pin-label stroke (preview SVG + EasyEDA silk TEXT; not [branding]).
+# [silk]
+# pin_label_color = "#EBEBEB"

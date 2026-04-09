@@ -21,7 +21,8 @@ silk_profile = "devkitc1"
 # The [branding] header must be present — do not comment it out while leaving text/image below.
 [branding]
 text = "Godswind Consulting"
-image = "resources/images/godswind-east-purple.jpeg"
+# image = "resources/images/godswind-east-purple.jpeg"
+image = "resources/images/godswind-east.jpeg"
 # SVG preview only — warm gold complements the purple monochrome logo (EasyEDA JSON unchanged).
 preview_silk_color = "#E6B800"
 # font_size = matplotlib outline quality only; text is scaled to fill the branding text box.
@@ -35,6 +36,14 @@ n_rows_top = 4
 n_rows_bottom = 4
 # Drop the row-B row nearest the gap (row-A reverser / vias need clearance).
 omit_row_b_gap_adjacent = true
+
+# Optional SVG preview canvas only (scripts/preview_adapter_board.py).
+[preview]
+board_color = "green"
+
+# Vector silk stroke for GPIO / kit ID / J1·J3 (preview SVG + EasyEDA TEXT; not [branding]).
+[silk]
+pin_label_color = "#EBEBEB"
 
 # Vendor J1/J3 label strings for scripts/bake_devkitc_gpio_silk_paths.py → out/intermediate/silk/<output>
 [silk_bake]

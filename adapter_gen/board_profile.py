@@ -1,17 +1,53 @@
 """Load board parameter files (TOML) for human + machine use.
 
 See ``resources/boards/esp32-s3-devkitc-1.toml`` for the schema.
+
+- ``[preview]`` — SVG-only (e.g. ``board_color`` for the preview canvas).
+- ``[silk]`` — vector silk **presentation** (``pin_label_color``) shared by SVG preview and
+  EasyEDA ``TEXT`` export — same stroke for GPIO / kit ID / J1·J3 refs (not ``[branding]``).
+  Fab soldermask color is still chosen at order time.
+
 Requires Python 3.11+ (``tomllib``).
 """
 
 from __future__ import annotations
 
+import re
 import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 from adapter_gen.geometry import BoardParams
+from adapter_gen.preview_board_style import BoardColorMode
+
+
+@dataclass(frozen=True)
+class BoardPreview:
+    """Optional ``[preview]`` — SVG canvas only (see ``adapter_gen/svg_preview``)."""
+
+    board_color: BoardColorMode
+
+
+@dataclass(frozen=True)
+class BoardSilk:
+    """Optional ``[silk]`` — stroke color for vector silk in preview + EasyEDA (not ``[silk_bake]``)."""
+
+    pin_label_color: str | None
+
+
+def _parse_silk_pin_label_color_hex(raw: object, path: Path) -> str | None:
+    """Return normalized ``#RRGGBB`` or None if absent."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", s):
+        raise ValueError(
+            f"{path}: [silk].pin_label_color must be #RRGGBB (e.g. #E8E8E8), got {raw!r}"
+        )
+    return s.upper()
 
 
 @dataclass(frozen=True)
@@ -49,6 +85,8 @@ class BoardProfile:
     # Filename under out/intermediate/silk/ for devkitc1-style GPIO silk JSON (from [silk_bake].output).
     silk_gpio_paths_json: str | None
     branding: BoardBranding | None
+    silk: BoardSilk | None
+    preview: BoardPreview | None
     source_path: Path | None
 
 
@@ -147,6 +185,29 @@ def load_board_profile(path: Path) -> BoardProfile:
         if out is not None and str(out).strip():
             silk_gpio_paths_json = str(out).strip()
 
+    silk: BoardSilk | None = None
+    sl = data.get("silk")
+    if isinstance(sl, dict):
+        plc = _parse_silk_pin_label_color_hex(sl.get("pin_label_color"), path)
+        silk = BoardSilk(pin_label_color=plc)
+
+    preview: BoardPreview | None = None
+    pr = data.get("preview")
+    if isinstance(pr, dict):
+        if pr.get("silk_pin_label_color") is not None:
+            raise ValueError(
+                f"{path}: [preview].silk_pin_label_color is no longer supported; "
+                "use [silk].pin_label_color (preview + EasyEDA)."
+            )
+        raw_bc = pr.get("board_color", "default")
+        bc_s = str(raw_bc).strip().lower() if raw_bc is not None else "default"
+        if bc_s not in ("default", "green"):
+            raise ValueError(
+                f"{path}: [preview].board_color must be 'default' or 'green', got {raw_bc!r}"
+            )
+        bc_mode: BoardColorMode = "green" if bc_s == "green" else "default"
+        preview = BoardPreview(board_color=bc_mode)
+
     return BoardProfile(
         id=str(data["id"]),
         title=str(data.get("title", data["id"])),
@@ -159,6 +220,8 @@ def load_board_profile(path: Path) -> BoardProfile:
         silk_profile=data.get("silk_profile"),
         silk_gpio_paths_json=silk_gpio_paths_json,
         branding=branding,
+        silk=silk,
+        preview=preview,
         source_path=path.resolve(),
     )
 

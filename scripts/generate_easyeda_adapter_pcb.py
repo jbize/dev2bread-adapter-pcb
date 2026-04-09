@@ -132,6 +132,11 @@ def _intermediate_silk_dir() -> Path:
     return _out_dir() / "intermediate" / "silk"
 
 
+def _easyeda_silk_text_fill(silk_pin_label_color: str | None) -> str:
+    """TEXT~ stroke/fill token: ``none`` (editor layer default) or ``#RRGGBB`` from TOML."""
+    return "none" if silk_pin_label_color is None else silk_pin_label_color
+
+
 def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
     """Translate an EasyEDA-style M/L/Z path (centered at origin) by (dx, dy) in file units."""
     parts = d.split()
@@ -161,6 +166,7 @@ def _append_devkitc_board_id_silk(
     *,
     lines: list[dict[str, str]],
     bp: BoardParams,
+    silk_pin_label_color: str | None = None,
 ) -> None:
     """Two-line kit label between J3 row and stem (visible when stem is in a breadboard)."""
     if not lines:
@@ -170,12 +176,13 @@ def _append_devkitc_board_id_silk(
     # Stack lines: index 0 above center, index 1 below (reading top-to-bottom on the PCB +Y down).
     n = len(lines)
     offs = board_id_line_y_offsets_mil(n)
+    fill = _easyeda_silk_text_fill(silk_pin_label_color)
     for i, row in enumerate(lines):
         lab = row["text"]
         d0 = row["d"]
         cy = mil_to_u(y_mid_mil + offs[i])
         dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}")
 
 
 def _append_labeled_silk(
@@ -187,6 +194,7 @@ def _append_labeled_silk(
     j3: list[str],
     vertical_head: bool = False,
     bp: BoardParams,
+    silk_pin_label_color: str | None = None,
 ) -> None:
     """Top silk at wide head + stem using parallel label lists (length ``bp.num_cols`` each).
 
@@ -199,6 +207,7 @@ def _append_labeled_silk(
     # Stem silk in the straddle gap (between pad columns and center), not outside the stem.
     cx_stem_left = mil_to_u((x_ln + xc) / 2.0)
     cx_stem_right = mil_to_u((xc + x_rn) / 2.0)
+    fill = _easyeda_silk_text_fill(silk_pin_label_color)
 
     def _head_d(lab: str) -> str:
         d0 = paths_map[lab]
@@ -212,21 +221,21 @@ def _append_labeled_silk(
         cx = mil_to_u(head_column_x_mil(i, bp))
         cy = mil_to_u(Y_W_ROW_A - off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}")
     for i in range(bp.num_cols):
         lab = j3[i]
         d0 = _head_d(lab)
         cx = mil_to_u(head_column_x_mil(i, bp))
         cy = mil_to_u(y_row_b + off_head)
         dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}")
     for i in range(bp.num_cols):
         lab = j1[i]
         d0 = paths_map[lab]
         cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_left, cy)
         shapes.append(
-            f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}"
+            f"TEXT~L~{cx_stem_left}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}"
         )
     for i in range(bp.num_cols):
         lab = j3[i]
@@ -234,7 +243,7 @@ def _append_labeled_silk(
         cy = mil_to_u(stem_pin_y_mil(i, bp))
         dabs = _offset_silk_path_d(d0, cx_stem_right, cy)
         shapes.append(
-            f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}"
+            f"TEXT~L~{cx_stem_right}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}"
         )
 
 
@@ -252,16 +261,18 @@ def _append_numeric_connector_headers_silk(
     *,
     paths_map: dict[str, str],
     bp: BoardParams,
+    silk_pin_label_color: str | None = None,
 ) -> None:
     """Top silk: four J1/J3 connector refs (wide head + stem); needs ``J1``/``J3`` glyph paths."""
     if "J1" not in paths_map or "J3" not in paths_map:
         return
+    fill = _easyeda_silk_text_fill(silk_pin_label_color)
     for lab, cx_mil, cy_mil in numeric_connector_header_centers_mil(bp):
         d0 = paths_map[lab]
         cx = mil_to_u(cx_mil)
         cy = mil_to_u(cy_mil)
         dabs = _offset_silk_path_d(d0, cx, cy)
-        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~none~3~~5~{lab}~{dabs}~~{nid()}")
+        shapes.append(f"TEXT~L~{cx}~{cy}~0.5~0~{fill}~3~~5~{lab}~{dabs}~~{nid()}")
 
 
 def _silk_pin1_circles_mil(bp: BoardParams) -> list[tuple[float, float, float]]:
@@ -291,6 +302,7 @@ def build_standard_compressed(
     silk_gpio_paths_json: str | None = None,
     row_reverser: bool = True,
     stem_neck_routing: bool = True,
+    silk_pin_label_color: str | None = None,
 ) -> dict:
     """EasyEDA Standard Edition JSON with `shape` array (tilde-delimited strings).
 
@@ -427,14 +439,23 @@ def build_standard_compressed(
                     j3=j3,
                     vertical_head=True,
                     bp=bp,
+                    silk_pin_label_color=silk_pin_label_color,
                 )
                 bid = raw.get("board_id_silk")
                 if isinstance(bid, dict) and isinstance(bid.get("lines"), list):
                     _append_devkitc_board_id_silk(
-                        shapes, nid, lines=bid["lines"], bp=bp
+                        shapes,
+                        nid,
+                        lines=bid["lines"],
+                        bp=bp,
+                        silk_pin_label_color=silk_pin_label_color,
                     )
                 _append_numeric_connector_headers_silk(
-                    shapes, nid, paths_map=paths_map, bp=bp
+                    shapes,
+                    nid,
+                    paths_map=paths_map,
+                    bp=bp,
+                    silk_pin_label_color=silk_pin_label_color,
                 )
     elif silk_labels == "numeric":
         data_path = _intermediate_silk_dir() / "numeric_silk_paths.json"
@@ -457,9 +478,14 @@ def build_standard_compressed(
                 j1=j1,
                 j3=j3,
                 bp=bp,
+                silk_pin_label_color=silk_pin_label_color,
             )
             _append_numeric_connector_headers_silk(
-                shapes, nid, paths_map=paths_map, bp=bp
+                shapes,
+                nid,
+                paths_map=paths_map,
+                bp=bp,
+                silk_pin_label_color=silk_pin_label_color,
             )
 
     if branding is not None:
@@ -574,6 +600,7 @@ def _write_standard(
     silk_gpio_paths_json: str | None = None,
     row_reverser: bool = True,
     stem_neck_routing: bool = True,
+    silk_pin_label_color: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
@@ -589,6 +616,7 @@ def _write_standard(
                 silk_gpio_paths_json=silk_gpio_paths_json,
                 row_reverser=row_reverser,
                 stem_neck_routing=stem_neck_routing,
+                silk_pin_label_color=silk_pin_label_color,
             ),
             f,
             indent=1,
@@ -778,6 +806,12 @@ def main() -> None:
     row_reverser = not args.no_row_reverser
     stem_neck_routing = not args.no_stem_neck_routing
 
+    silk_pin_label_color = (
+        profile.silk.pin_label_color
+        if profile is not None and profile.silk is not None
+        else None
+    )
+
     if args.all_variants:
         for variant in ("devkitc1", "numeric"):
             args.silk_labels = variant
@@ -790,6 +824,7 @@ def main() -> None:
                 silk_gpio_paths_json=silk_gpio_paths_json,
                 row_reverser=row_reverser,
                 stem_neck_routing=stem_neck_routing,
+                silk_pin_label_color=silk_pin_label_color,
             )
     else:
         out = args.output or _default_standard_path(
@@ -803,6 +838,7 @@ def main() -> None:
             silk_gpio_paths_json=silk_gpio_paths_json,
             row_reverser=row_reverser,
             stem_neck_routing=stem_neck_routing,
+            silk_pin_label_color=silk_pin_label_color,
         )
 
 

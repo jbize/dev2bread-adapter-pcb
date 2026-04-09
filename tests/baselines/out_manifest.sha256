@@ -2,7 +2,7 @@
 # JSON files: hash of canonical JSON (sorted keys); SVG: raw file bytes.
 # Regenerate: scripts/verify_board_outputs.py --update-baseline
 f69fb4da7694d8036ce24520835b406d04fcfc6a5f27628691347a6cf583be96  out/easyeda/esp32-devkit-v1.devkitc1.standard.json
-eaa1f9c14cb0138a4d489d867290cef50bda9a4a3ebefe226fac9b9980a39ffb  out/easyeda/esp32-s3-devkitc-1.devkitc1.standard.json
+f4460f21790f06e38f7125d1c55dce5ee96e020f5e688f856c2d5fbcea45ffd1  out/easyeda/esp32-s3-devkitc-1.devkitc1.standard.json
 353e8ee1a0f216f94efbf860c3e1959007e608c03aab86d45986996b93da9be3  out/easyeda/esp32-wroom-32.numeric.standard.json
 0c62508d6a28a1e89fdf39b005bed856c135e1fb562032d8bee29af42b4194b6  out/easyeda/example-14pin-7-per-row.numeric.standard.json
 5dbab2c22de6bcc1d31e21304a51f9256a55ebbd253866c2d469b9ce849f863c  out/easyeda/generic-44pin-devkit.numeric.standard.json
@@ -10,7 +10,7 @@ a64cc91051989094dab9037a9ca4c34495951907d42893c86eaef6571b1732fd  out/intermedia
 c4448ed7d8e7d6288628f6cf20ea3c3b3219e25566852fe6ee33d39f3ac443db  out/intermediate/silk/esp32-devkit-v1_gpio_silk_paths.json
 c7f713be2220876de0ada6fcd7f3ae5b355efbf55656c8c456b92a6d50ca2dd5  out/intermediate/silk/numeric_silk_paths.json
 e1a70588a2accd6899ce75b960e9e0795c7d25f851da634ae3f8ba99bb1cbfb2  out/preview/esp32-devkit-v1.svg
-bb57de6b5ea2a06c7e67180d6fda88cdda4bdd02ea512d5507d9c46f45003632  out/preview/esp32-s3-devkitc-1.svg
+94bd76be5716e9412ad3a1eff8777e1f4874f5118393c7ffe5dda38e739dc52b  out/preview/esp32-s3-devkitc-1.svg
 8979dc687d62a811aea4cf5892739700afb18cbbca93398f90f3b8391d9f1c8e  out/preview/esp32-wroom-32.svg
 67113e379529d961738c850d6772d1dd8e352346539987e5f7c41c4472f18ab3  out/preview/example-14pin-7-per-row.svg
 ea57c3ae61b46b1b9da26bf2f7d269dea37c292bb68706e56fdff98e91d95eaa  out/preview/generic-44pin-devkit.svg

@@ -31,7 +31,9 @@ Silk + optional ``[branding]`` match what ``scripts/generate_easyeda_adapter_pcb
 
 Silk modes and branding (devkitc1 vs numeric vs auto, ``--no-branding``): see repository
 **README.md** (section **SVG preview**). Optional **``--routing-waypoints``** draws developer-only
-cyan waypoint overlays (off by default).
+cyan waypoint overlays (off by default). **``--board-color green``** uses a dark soldermask-style
+fill for silk/branding contrast checks (default remains neutral shading). Vector pin-label stroke
+color comes from **`[silk].pin_label_color`** in the board TOML — same hex as EasyEDA silk **`TEXT`**.
 
 Run from repo root (or set PYTHONPATH).
 """
@@ -60,6 +62,7 @@ try:
         load_board_profile,
         resolve_board_params,
     )
+    from adapter_gen.preview_board_style import BoardColorMode
     from adapter_gen.svg_preview import emit_board_svg
 except ImportError as e:
     print(
@@ -167,6 +170,14 @@ def main() -> None:
         metavar="DIR",
         help="Directory with devkitc1_gpio_silk_paths.json / numeric_silk_paths.json "
         "(default: out/intermediate/silk under repo root).",
+    )
+    p.add_argument(
+        "--board-color",
+        choices=("default", "green"),
+        default=None,
+        metavar="MODE",
+        help="Preview only: board face tint. When omitted, uses [preview].board_color from the "
+        "board TOML if present, else neutral default. Overrides TOML when set.",
     )
     p.add_argument(
         "--no-branding",
@@ -291,6 +302,19 @@ def main() -> None:
     else:
         preview_traces = "both"
 
+    if args.board_color is not None:
+        board_color: BoardColorMode = "green" if args.board_color == "green" else "default"
+    elif profile is not None and profile.preview is not None:
+        board_color = profile.preview.board_color
+    else:
+        board_color = "default"
+
+    silk_pin_label_color = (
+        profile.silk.pin_label_color
+        if profile is not None and profile.silk is not None
+        else None
+    )
+
     emit_board_svg(
         bp,
         out,
@@ -301,6 +325,8 @@ def main() -> None:
         silk_gpio_paths_json=silk_gpio_paths_json,
         routing_waypoint_overlays=args.routing_waypoints,
         preview_traces=preview_traces,
+        board_color=board_color,
+        silk_pin_label_color=silk_pin_label_color,
     )
     print(out.resolve())
 

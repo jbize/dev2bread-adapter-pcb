@@ -20,7 +20,8 @@ silk_profile = "devkitc1"
 # Top Silk in the wide-head gap (same pattern as esp32-s3-devkitc-1). Use --no-branding to omit.
 [branding]
 text = "Godswind Consulting"
-image = "resources/images/godswind-east-purple.jpeg"
+# image = "resources/images/godswind-east-purple.jpeg"
+image = "resources/images/godswind-east.jpeg"
 preview_silk_color = "#E6B800"
 font_family = "DejaVu Serif"
 font_size = 96
@@ -31,6 +32,13 @@ font_style = "normal"
 n_rows_top = 4
 n_rows_bottom = 4
 omit_row_b_gap_adjacent = true
+
+# SVG preview canvas only (--board-color overrides). "green" ≈ dark soldermask for contrast checks.
+[preview]
+board_color = "default"
+
+# Vector pin-label stroke (preview SVG + EasyEDA silk TEXT; not [branding]).
+[silk]
 
 # Vendor labels → scripts/bake_devkitc_gpio_silk_paths.py → out/intermediate/silk/<output>
 [silk_bake]

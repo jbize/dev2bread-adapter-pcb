@@ -93,6 +93,8 @@ Run from the repo root. Silk JSON must exist under **`out/intermediate/silk/`** 
 | **Numeric 1…N** silk + branding (generic indices, not vendor GPIO names) | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk numeric` |
 | **Silk profile from TOML only** | `./scripts/preview_adapter_board.py --board esp32-s3-devkitc-1 --silk auto` — uses **`silk_profile`** in **`resources/boards/<name>.toml`** (`devkitc1` → devkitc GPIO paths; **`generic`** / **`numeric`** in TOML map to the numeric silk JSON). To force numeric labels while keeping a **`devkitc1`** profile in the file, pass **`--silk numeric`** explicitly. |
 | **Waypoint dots + temp index labels** on top of traces (tuning only; off by default) | add **`--routing-waypoints`** — copper routing sketches are always drawn unless **`--top-only`** / **`--bottom-only`** |
+| **Green soldermask-style board** (preview only) | **`--board-color green`**, or **`[preview].board_color`** in the board TOML (CLI overrides TOML). |
+| **Silk vector color** (GPIO / numeric / kit ID / J1·J3 refs — not branding) | **`[silk].pin_label_color = "#RRGGBB"`** — same stroke in preview SVG and EasyEDA `TEXT` (omit for neutral gray preview / editor default silk). |
 
 Default output path: **`out/preview/<board>.svg`** (override with **`-o`**). Use **`--no-branding`** to omit **`[branding]`** even when it is defined in the profile.
 

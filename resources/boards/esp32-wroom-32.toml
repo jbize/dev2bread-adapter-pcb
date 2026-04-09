@@ -19,3 +19,10 @@ silk_profile = "generic"
 n_rows_top = 4
 n_rows_bottom = 4
 omit_row_b_gap_adjacent = true
+
+# SVG preview canvas only (--board-color overrides). "green" ≈ dark soldermask for contrast checks.
+[preview]
+board_color = "default"
+
+# Vector pin-label stroke (preview SVG + EasyEDA silk TEXT; not [branding]).
+[silk]
