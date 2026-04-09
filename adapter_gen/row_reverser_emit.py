@@ -17,7 +17,12 @@ import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from typing import Literal
 
-from adapter_gen.easyeda_layers import EASYEDA_BOTTOM_LAYER_ID, EASYEDA_TOP_LAYER_ID
+from adapter_gen.easyeda_layers import (
+    EASYEDA_BOTTOM_LAYER_ID,
+    EASYEDA_TOP_LAYER_ID,
+    ROUTING_VIA_HOLE_RADIUS_MIL,
+    ROUTING_VIA_OUTER_DIAM_MIL,
+)
 from adapter_gen.geometry import BoardParams
 from adapter_gen.preview_waypoint_style import (
     BOTTOM_COPPER_PREVIEW_STROKE,
@@ -30,14 +35,6 @@ from adapter_gen.row_reverser_geometry import (
     polyline_points_attr,
     row_reverser_y_pad_row_a_innermost_mil,
 )
-
-# Plated routing vias (file units: 1 = 10 mil, same as ``mil_to_u`` in generate_easyeda_adapter_pcb).
-# Drill is 8 mil diameter (hole radius 4 mil). Outer diameter is the via *pad* (annulus), not the
-# drill: fabs need enough copper around the hole (often ~4 mil/side for cheap runs). 16 mil outer
-# ≈ 8 + 8 annulus; bump to 20 if your DRC requires a wider ring.
-# Exported for DRCRULE in ``generate_easyeda_adapter_pcb`` (must match emitted VIA~ dimensions).
-ROUTING_VIA_OUTER_DIAM_MIL = 16.0
-ROUTING_VIA_HOLE_RADIUS_MIL = 4.0
 
 
 def _dedupe_via_centers_mil(

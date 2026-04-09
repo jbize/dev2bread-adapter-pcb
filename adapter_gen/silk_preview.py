@@ -33,6 +33,8 @@ HEAD_SILK_ROTATE_DEG = -90.0
 
 # Vertical gap (mil) between stacked board-ID lines above the stem (devkitc kit label).
 BOARD_ID_LINE_GAP_MIL = 64.0
+# Clearance (mil) from stem pad row centers upward to the board-ID band (room for two lines).
+BOARD_ID_CLEARANCE_ABOVE_STEM_PADS_MIL = 120.0
 
 
 def rotate_silk_path_d(d: str, deg: float) -> str:
@@ -94,8 +96,7 @@ def above_stem_board_id_center_mil(p: BoardParams) -> tuple[float, float]:
     """Center for board-ID silk: below J3 row labels, above stem pads (same X as stem)."""
     xc, _, _, y_stem_top = stem_layout_mil(p)
     pad_half = PAD_SIZE / 2.0
-    # ~120 mil above stem pad row centers clears two larger lines without overlapping stem pads.
-    y_mid = y_stem_top - pad_half - 120.0
+    y_mid = y_stem_top - pad_half - BOARD_ID_CLEARANCE_ABOVE_STEM_PADS_MIL
     return xc, y_mid
 
 

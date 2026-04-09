@@ -42,7 +42,8 @@ pre-commit run -a   # optional; requires: pip install pre-commit && pre-commit i
 ## Phase 4 — DRY / preview–export parity
 
 - [x] Read **[preview-generator-parity.md](preview-generator-parity.md)** — parity table (outline/geometry, row reverser, stem neck, silk, baked JSON) drives where to share code next; no duplicate work item list here
-- [ ] Extract **duplicated mil constants** elsewhere as you touch code (done: **`TRACE_WIDTH_MIL` / `TRACE_GAP_MIL`** for row-reverser; **`above_stem_board_id_center_mil`**, **`board_id_line_y_offsets_mil`**, **`BOARD_ID_LINE_GAP_MIL`** for devkitc board-ID silk in `silk_preview.py` + `generate_easyeda_adapter_pcb.py`)
+- [x] Extract **duplicated mil constants** where obvious (trace width/gap; board-ID helpers; **`ROUTING_VIA_*_MIL`** in `easyeda_layers.py`; **`BOARD_ID_CLEARANCE_ABOVE_STEM_PADS_MIL`** in `silk_preview.py`)
+- [x] **`pytest`** on pure helpers (`tests/test_board_id_offsets.py`) + CI step
 - [x] **`verify_board_outputs.py --no-branding`** after DRY changes (CI + local regression)
 
 ---

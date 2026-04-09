@@ -25,3 +25,9 @@ from __future__ import annotations
 # Sync with ``layers`` in ``scripts/generate_easyeda_adapter_pcb.py`` ``build_*``.
 EASYEDA_TOP_LAYER_ID = "1"
 EASYEDA_BOTTOM_LAYER_ID = "2"
+
+# Plated routing vias (mil). File units in JSON: 1 = 10 mil (``mil_to_u`` in generator).
+# Drill Ø ≈ 8 mil → hole radius 4 mil. Outer = via pad (annulus); 16 mil is typical ring budget.
+# Must match ``VIA~`` in ``row_reverser_emit`` and DRCRULE in ``generate_easyeda_adapter_pcb``.
+ROUTING_VIA_OUTER_DIAM_MIL = 16.0
+ROUTING_VIA_HOLE_RADIUS_MIL = 4.0

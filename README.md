@@ -57,10 +57,11 @@ pip install -e ".[dev]"   # ruff + mypy + pre-commit
 ruff check .
 ruff format --check .
 mypy   # adapter_gen/ + scripts/ (see [tool.mypy] in pyproject.toml)
+pytest -q   # unit tests under tests/ (pure helpers)
 pre-commit install   # once per clone; runs ruff + ruff format from .pre-commit-config.yaml
 ```
 
-GitHub Actions runs **`ruff`**, **`mypy`**, and the output verification job on push and pull requests (pre-commit is optional locally). Standards: **[docs/python-clean-code.md](docs/python-clean-code.md)**. Phased rollout checklist: **[docs/python-clean-code-tracker.md](docs/python-clean-code-tracker.md)**.
+GitHub Actions runs **`ruff`**, **`mypy`**, **`pytest`**, and the output verification job on push and pull requests (pre-commit is optional locally). Standards: **[docs/python-clean-code.md](docs/python-clean-code.md)**. Phased rollout checklist: **[docs/python-clean-code-tracker.md](docs/python-clean-code-tracker.md)**.
 
 **Regression checksums (bake + preview + EasyEDA for every board TOML):** after deleting **`out/`**, the script runs **`bake_devkitc_gpio_silk_paths.py --all`**, then **`preview_adapter_board.py`** and **`generate_easyeda_adapter_pcb.py`** per profile. It compares SHA256s to **`tests/baselines/out_manifest.sha256`**: raw bytes for **`.svg`**, and for **`.json`** a hash of **canonical JSON** (sorted keys) so baked silk under **`out/intermediate/silk/`** is verified even if key order differs. Refresh the baseline when outputs change on purpose:
 

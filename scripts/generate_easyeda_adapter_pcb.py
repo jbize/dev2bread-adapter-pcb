@@ -65,6 +65,10 @@ try:
         resolve_board_params,
     )
     from adapter_gen.branding import append_branding_easyeda_shapes
+    from adapter_gen.easyeda_layers import (
+        ROUTING_VIA_HOLE_RADIUS_MIL,
+        ROUTING_VIA_OUTER_DIAM_MIL,
+    )
     from adapter_gen.geometry import (
         BOARD_CORNER_RADIUS_MIL,
         HEAD_OUTLINE_EXTRA,
@@ -82,11 +86,7 @@ try:
         wide_head_y_rows_mil,
     )
     from adapter_gen.preview_waypoint_style import TRACE_WIDTH_MIL
-    from adapter_gen.row_reverser_emit import (
-        ROUTING_VIA_HOLE_RADIUS_MIL,
-        ROUTING_VIA_OUTER_DIAM_MIL,
-        append_row_reverser_easyeda_shapes,
-    )
+    from adapter_gen.row_reverser_emit import append_row_reverser_easyeda_shapes
     from adapter_gen.silk_preview import (
         HEAD_SILK_ROTATE_DEG,
         above_stem_board_id_center_mil,
