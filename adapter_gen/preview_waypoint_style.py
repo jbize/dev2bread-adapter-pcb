@@ -16,9 +16,9 @@ TOP_COPPER_PREVIEW_LABEL_FILL = "#b71c1c"
 BOTTOM_COPPER_PREVIEW_DOT_FILL = "#bbdefb"
 BOTTOM_COPPER_PREVIEW_LABEL_FILL = "#0d47a1"
 
-# Match row-reverser preview / typical default signal trace width (mil).
+# Default signal trace width + gap (mil) — shared with ``row_reverser_geometry`` and
+# ``scripts/row_reverser_svg.py`` so preview strokes match reverser sketch geometry.
 TRACE_WIDTH_MIL = 6.0
-# Same base as ``_DEFAULT_TRACE_GAP`` in row_reverser_geometry.
 TRACE_GAP_MIL = 8.0
 
 # Dot diameter = trace width (marker reads as one trace wide).

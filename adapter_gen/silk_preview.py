@@ -31,6 +31,9 @@ from adapter_gen.silk_bake import default_devkitc1_gpio_json_name
 # avoiding overlap along the row. CCW in file space (y-down); -90° maps +X extent toward +Y.
 HEAD_SILK_ROTATE_DEG = -90.0
 
+# Vertical gap (mil) between stacked board-ID lines above the stem (devkitc kit label).
+BOARD_ID_LINE_GAP_MIL = 64.0
+
 
 def rotate_silk_path_d(d: str, deg: float) -> str:
     """Rotate ``d`` around origin in EasyEDA file units (+X right, +Y down).
@@ -87,11 +90,24 @@ def translate_silk_path_d_to_mil(d: str, cx_mil: float, cy_mil: float) -> str:
     return " ".join(out)
 
 
-def _above_stem_board_id_center_mil(p: BoardParams) -> tuple[float, float]:
+def above_stem_board_id_center_mil(p: BoardParams) -> tuple[float, float]:
+    """Center for board-ID silk: below J3 row labels, above stem pads (same X as stem)."""
     xc, _, _, y_stem_top = stem_layout_mil(p)
     pad_half = PAD_SIZE / 2.0
+    # ~120 mil above stem pad row centers clears two larger lines without overlapping stem pads.
     y_mid = y_stem_top - pad_half - 120.0
     return xc, y_mid
+
+
+def board_id_line_y_offsets_mil(n: int) -> list[float]:
+    """Y offsets (mil, +Y down) for N stacked board-ID lines, centered on the midpoint."""
+    if n <= 0:
+        return []
+    if n == 1:
+        return [0.0]
+    gap = BOARD_ID_LINE_GAP_MIL
+    total = gap * (n - 1)
+    return [-total / 2.0 + i * gap for i in range(n)]
 
 
 def load_silk_label_data(
@@ -251,16 +267,11 @@ def board_id_path_elements_mil(
     lines: list[dict[str, str]],
 ) -> list[str]:
     """Two-line (or N-line) kit ID above stem (each row has ``text`` + ``d`` from bake)."""
-    cx_mil, y_mid_mil = _above_stem_board_id_center_mil(p)
+    cx_mil, y_mid_mil = above_stem_board_id_center_mil(p)
     n = len(lines)
     if n == 0:
         return []
-    if n == 1:
-        offs = [0.0]
-    else:
-        gap_mil = 64.0
-        total = gap_mil * (n - 1)
-        offs = [-total / 2.0 + i * gap_mil for i in range(n)]
+    offs = board_id_line_y_offsets_mil(n)
     ds: list[str] = []
     for i, row in enumerate(lines):
         d0 = row["d"]

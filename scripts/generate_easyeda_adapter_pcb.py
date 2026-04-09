@@ -89,6 +89,8 @@ try:
     )
     from adapter_gen.silk_preview import (
         HEAD_SILK_ROTATE_DEG,
+        above_stem_board_id_center_mil,
+        board_id_line_y_offsets_mil,
         numeric_connector_header_centers_mil,
         paths_map_with_connector_ref_glyphs,
         rotate_silk_path_d,
@@ -164,16 +166,6 @@ def _offset_silk_path_d(d: str, dx: float, dy: float) -> str:
     return " ".join(out)
 
 
-def _above_stem_board_id_center_mil(bp: BoardParams) -> tuple[float, float]:
-    """Center for board-ID silk: below J3 row labels, above stem pads (same X as stem)."""
-    xc, _, _, y_stem_top = stem_layout_mil(bp)
-    pad_half = PAD_SIZE / 2.0
-    # J3 per-pin silk sits near row B + off_head; keep ID lower in the throat.
-    # ~120 mil above stem pad row centers clears two larger lines without overlapping stem pads.
-    y_mid = y_stem_top - pad_half - 120.0
-    return xc, y_mid
-
-
 def _append_devkitc_board_id_silk(
     shapes: list[str],
     nid: Callable[[], str],
@@ -184,16 +176,11 @@ def _append_devkitc_board_id_silk(
     """Two-line kit label between J3 row and stem (visible when stem is in a breadboard)."""
     if not lines:
         return
-    cx_mil, y_mid_mil = _above_stem_board_id_center_mil(bp)
+    cx_mil, y_mid_mil = above_stem_board_id_center_mil(bp)
     cx = mil_to_u(cx_mil)
     # Stack lines: index 0 above center, index 1 below (reading top-to-bottom on the PCB +Y down).
     n = len(lines)
-    if n == 1:
-        offs = [0.0]
-    else:
-        gap_mil = 64.0
-        total = gap_mil * (n - 1)
-        offs = [-total / 2.0 + i * gap_mil for i in range(n)]
+    offs = board_id_line_y_offsets_mil(n)
     for i, row in enumerate(lines):
         lab = row["text"]
         d0 = row["d"]

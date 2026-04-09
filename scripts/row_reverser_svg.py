@@ -38,6 +38,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 try:
     from adapter_gen.geometry import HOLE_R, PITCH
+    from adapter_gen.preview_waypoint_style import TRACE_GAP_MIL, TRACE_WIDTH_MIL
     from adapter_gen.row_reverser_geometry import (
         compute_row_reverser_geometry_mil_standalone,
         polyline_points_attr,
@@ -49,10 +50,6 @@ except ImportError as e:
 
 # Inner-layer routing via (drill) — smaller than PTH pad hole for illustration
 _DEFAULT_VIA_R = min(8.0, HOLE_R * 0.4)
-# Copper width for preview strokes (mil)
-_TRACE_STROKE = 6.0
-# Minimum gap between adjacent horizontal traces (mil)
-_DEFAULT_TRACE_GAP = 8.0
 # Edge via column: ~one pad diameter + neck past last pad center (mil)
 _DEFAULT_EDGE_OFFSET = 2.0 * HOLE_R + 20.0
 # Red horizontals + vias start below PTH holes (center + pad_r + stroke/2 + this gap)
@@ -74,7 +71,7 @@ def emit_svg(
     y_pad: float = 0.0,
     y_min: float | None = None,
     neck_clearance_mil: float = _DEFAULT_NECK_CLEARANCE_MIL,
-    trace_gap: float = _DEFAULT_TRACE_GAP,
+    trace_gap: float = TRACE_GAP_MIL,
     max_y_span: float | None = None,
 ) -> str:
     if n < 2:
@@ -90,7 +87,7 @@ def emit_svg(
         via_r=via_r,
         trace_gap=trace_gap,
         neck_clearance_mil=neck_clearance_mil,
-        trace_stroke=_TRACE_STROKE,
+        trace_stroke=TRACE_WIDTH_MIL,
         max_y_span=max_y_span,
         y_min_floor=y_min,
     )
@@ -123,11 +120,11 @@ def emit_svg(
         f"  <title>Row reverser preview (mil): J1 right … J{n} left ({n} columns)</title>",
         "  <defs>",
         '    <style type="text/css"><![CDATA[',
-        f"      .trace-cyan {{ fill: none; stroke: #6cf; stroke-width: {_TRACE_STROKE}; stroke-linecap: round; stroke-linejoin: round; }}",
-        f"      .trace-red {{ fill: none; stroke: #e33; stroke-width: {_TRACE_STROKE}; stroke-linecap: round; stroke-linejoin: round; }}",
-        f"      .via {{ fill: #284; stroke: #8f8; stroke-width: {max(1.0, _TRACE_STROKE * 0.25)}; }}",
+        f"      .trace-cyan {{ fill: none; stroke: #6cf; stroke-width: {TRACE_WIDTH_MIL}; stroke-linecap: round; stroke-linejoin: round; }}",
+        f"      .trace-red {{ fill: none; stroke: #e33; stroke-width: {TRACE_WIDTH_MIL}; stroke-linecap: round; stroke-linejoin: round; }}",
+        f"      .via {{ fill: #284; stroke: #8f8; stroke-width: {max(1.0, TRACE_WIDTH_MIL * 0.25)}; }}",
         f"      .via-x {{ stroke: #efe; stroke-width: {max(0.8, via_r * 0.12)}; }}",
-        f"      .pad {{ fill: #444; stroke: #888; stroke-width: {round(max(1.5, _TRACE_STROKE * 0.35), 2)}; }}",
+        f"      .pad {{ fill: #444; stroke: #888; stroke-width: {round(max(1.5, TRACE_WIDTH_MIL * 0.35), 2)}; }}",
         f"      .lbl {{ fill: #9cf; font-size: {font_px * 0.85:.1f}px; font-weight: 500; }}",
         "      .note { fill: #888; font-size: 11px; }",
         "      .dim { fill: #666; font-size: 10px; }",
@@ -230,9 +227,9 @@ def main() -> None:
     p.add_argument(
         "--trace-gap",
         type=float,
-        default=_DEFAULT_TRACE_GAP,
+        default=TRACE_GAP_MIL,
         metavar="MIL",
-        help=f"Minimum gap between adjacent horizontal traces, mil (default {_DEFAULT_TRACE_GAP:.0f}).",
+        help=f"Minimum gap between adjacent horizontal traces, mil (default {TRACE_GAP_MIL:.0f}).",
     )
     p.add_argument(
         "--max-y-span",

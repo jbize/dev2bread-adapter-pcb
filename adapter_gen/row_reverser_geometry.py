@@ -18,11 +18,10 @@ from adapter_gen.geometry import (
     pad_clearance_radius_mil,
     wide_head_y_rows_mil,
 )
+from adapter_gen.preview_waypoint_style import TRACE_GAP_MIL, TRACE_WIDTH_MIL
 
-# Match ``scripts/row_reverser_svg.py`` defaults
+# Match ``scripts/row_reverser_svg.py`` routing-via default
 _DEFAULT_VIA_R = min(8.0, HOLE_R * 0.4)
-_TRACE_STROKE = 6.0
-_DEFAULT_TRACE_GAP = 8.0
 _DEFAULT_EDGE_OFFSET = 2.0 * HOLE_R + 20.0
 # Gap (mil) below pad copper to first reverser lane; keeps top-layer diagonals off J1 annuli.
 _DEFAULT_NECK_CLEARANCE_MIL = 10.0
@@ -203,9 +202,9 @@ def compute_row_reverser_geometry_mil(
     edge_offset_mil: float = _DEFAULT_EDGE_OFFSET,
     pad_r: float = HOLE_R,
     via_r: float = _DEFAULT_VIA_R,
-    trace_gap: float = _DEFAULT_TRACE_GAP,
+    trace_gap: float = TRACE_GAP_MIL,
     neck_clearance_mil: float = _DEFAULT_NECK_CLEARANCE_MIL,
-    trace_stroke: float = _TRACE_STROKE,
+    trace_stroke: float = TRACE_WIDTH_MIL,
     max_y_span: float | None = None,
     y_min_floor: float | None = None,
 ) -> RowReverserGeometry | None:
@@ -253,9 +252,9 @@ def compute_row_reverser_geometry_mil_standalone(
     edge_offset_mil: float = _DEFAULT_EDGE_OFFSET,
     pad_r: float = HOLE_R,
     via_r: float = _DEFAULT_VIA_R,
-    trace_gap: float = _DEFAULT_TRACE_GAP,
+    trace_gap: float = TRACE_GAP_MIL,
     neck_clearance_mil: float = _DEFAULT_NECK_CLEARANCE_MIL,
-    trace_stroke: float = _TRACE_STROKE,
+    trace_stroke: float = TRACE_WIDTH_MIL,
     max_y_span: float | None = None,
     y_min_floor: float | None = None,
 ) -> RowReverserGeometry | None:
